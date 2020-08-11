@@ -1407,6 +1407,9 @@ bool ExpressionCompiler::visit(MemberAccess const& _memberAccess)
 		{
 			// no-op
 		}
+		else if (member == "cumulativeConsumedGas") {
+			m_context.simpleRewrite("ovmCumulativeConsumedGas()", 0, 1, true);
+		}
 		else
 			solAssert(false, "Unknown magic member.");
 		break;
