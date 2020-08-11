@@ -1355,7 +1355,8 @@ public:
 		Message, ///< "msg"
 		Transaction, ///< "tx"
 		ABI, ///< "abi"
-		MetaType ///< "type(...)"
+		MetaType, ///< "type(...)"
+		OVM, ///< "ovm"
 	};
 
 public:

@@ -3491,6 +3491,8 @@ string MagicType::richIdentifier() const
 	case Kind::MetaType:
 		solAssert(m_typeArgument, "");
 		return "t_magic_meta_type_" + m_typeArgument->richIdentifier();
+	case Kind::OVM:
+		return "t_magic_ovm";
 	}
 	return "";
 }
@@ -3593,6 +3595,12 @@ MemberList::MemberMap MagicType::nativeMembers(ContractDefinition const*) const
 		else
 			return {};
 	}
+	case Kind::OVM:
+	{
+		return MemberList::MemberMap({
+				{"cumulativeConsumedGas", TypeProvider::uint256()},
+			});
+	}
 	}
 	solAssert(false, "Unknown kind of magic.");
 	return {};
@@ -3613,6 +3621,8 @@ string MagicType::toString(bool _short) const
 	case Kind::MetaType:
 		solAssert(m_typeArgument, "");
 		return "type(" + m_typeArgument->toString(_short) + ")";
+	case Kind::OVM:
+		return "ovm";
 	}
 	solAssert(false, "Unknown kind of magic.");
 	return {};
