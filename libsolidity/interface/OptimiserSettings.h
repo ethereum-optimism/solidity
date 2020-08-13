@@ -52,7 +52,7 @@ struct OptimiserSettings
 		s.runJumpdestRemover = true;
 		s.runPeephole = true;
 		s.runDeduplicate = true;
-		s.runCSE = false;
+		s.runCSE = true;
 		s.runConstantOptimiser = true;
 		// The only disabled ones
 		s.optimizeStackAllocation = false;
