@@ -694,8 +694,7 @@ LinkerObject const& Assembly::assemble() const
 		ret.bytecode += dataItem.second;
 	}
 
-	// remove auxdata from contracts
-	//ret.bytecode += m_auxiliaryData;
+	ret.bytecode += m_auxiliaryData;
 
 	for (unsigned pos: sizeRef)
 	{
