@@ -234,9 +234,8 @@ void Assembly::assemblyStream(ostream& _out, string const& _prefix, StringMap co
 		}
 	}
 
-	// Commenting this out removes the aux data from compiled contracts
-	/*if (m_auxiliaryData.size() > 0)
-		_out << endl << _prefix << "auxdata: 0x" << toHex(m_auxiliaryData) << endl;*/
+	if (m_auxiliaryData.size() > 0)
+		_out << endl << _prefix << "auxdata: 0x" << toHex(m_auxiliaryData) << endl;
 }
 
 string Assembly::assemblyString(StringMap const& _sourceCodes) const

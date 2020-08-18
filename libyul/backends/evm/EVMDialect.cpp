@@ -102,6 +102,27 @@ map<YulString, BuiltinFunctionForEVM> createBuiltins(langutil::EVMVersion _evmVe
 		)
 			builtins.emplace(createEVMFunction(instr.first, instr.second));
 
+	builtins.emplace(createFunction(
+			"kall",
+			4,
+			1,
+			SideEffects{false, false, false, false, true},
+			false,
+			[](
+				FunctionCall const&,
+				AbstractAssembly& _assembly,
+				BuiltinContext&,
+				std::function<void()> _visitArguments
+			) {
+				_visitArguments();
+				_assembly.appendInstruction(dev::eth::Instruction::CALLER);
+				_assembly.appendConstant(0);
+				_assembly.appendInstruction(dev::eth::Instruction::SWAP1);
+				_assembly.appendInstruction(dev::eth::Instruction::GAS);
+				_assembly.appendInstruction(dev::eth::Instruction::CALL);
+			}
+		));
+
 	if (_objectAccess)
 	{
 		builtins.emplace(createFunction("datasize", 1, 1, SideEffects{}, true, [](

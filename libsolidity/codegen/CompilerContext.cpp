@@ -111,7 +111,7 @@ void CompilerContext::simpleRewrite(string function, int _in, int _out, bool opt
 		<input2>
 
 		// overwrite call params
-		let success := call(gas(), caller(), 0, callBytes, <in_size>, callBytes, <out_size>)
+		let success := kall(callBytes, <in_size>, callBytes, <out_size>)
 
 		if eq(success, 0) {
 				revert(0, 0)
@@ -139,7 +139,7 @@ bool CompilerContext::appendCallback(eth::AssemblyItem const& _i) {
 			mstore(add(add(callBytes, 0x24), ptr), mload(add(argsOffset, ptr)))
 		}
 
-		let success := call(gas(), caller(), 0, callBytes, add(0x24, argsLength), retOffset, retLength)
+		let success := kall(callBytes, add(0x24, argsLength), retOffset, retLength)
 		if eq(success, 0) { revert(0, 0) }
 
 		retLength := success
@@ -208,7 +208,7 @@ bool CompilerContext::appendCallback(eth::AssemblyItem const& _i) {
 							mstore(add(add(callBytes, 4), ptr), mload(add(offset, ptr)))
 						}
 
-						let success := call(gas(), caller(), 0, callBytes, add(4, length), callBytes, 0x20)
+						let success := kall(callBytes, add(4, length), callBytes, 0x20)
 						if eq(success, 0) { revert(0, 0) }
 
 						length := mload(callBytes)
@@ -222,7 +222,7 @@ bool CompilerContext::appendCallback(eth::AssemblyItem const& _i) {
 							mstore(add(add(callBytes, 0x24), ptr), mload(add(offset, ptr)))
 						}
 
-						let success := call(gas(), caller(), 0, callBytes, add(0x24, length), callBytes, 0x20)
+						let success := kall(callBytes, add(0x24, length), callBytes, 0x20)
 						if eq(success, 0) { revert(0, 0) }
 
 						salt := mload(callBytes)
@@ -235,7 +235,7 @@ bool CompilerContext::appendCallback(eth::AssemblyItem const& _i) {
 						mstore(add(callBytes, 0x24), offset)
 						mstore(add(callBytes, 0x44), length)
 
-						let success := call(gas(), caller(), 0, callBytes, 0x64, destOffset, length)
+						let success := kall(callBytes, 0x64, destOffset, length)
 						if eq(success, 0) { revert(0, 0) }
 					})",
 					{"length", "offset", "destOffset", "addr"});
