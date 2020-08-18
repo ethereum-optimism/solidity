@@ -69,8 +69,7 @@ void CompilerContext::complexRewrite(string function, int _in, int _out,
 	auto asm_code = Whiskers(R"({
 		let methodId := 0x<methodId>
 
-		// needed to fix synthetix
-		let callBytes := 0x80000
+		let callBytes := mload(0x40)
 
 		// replace the first 4 bytes with the right methodID
 		mstore(callBytes, shl(224, methodId))
