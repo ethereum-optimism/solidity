@@ -158,6 +158,13 @@ bool CompilerContext::appendCallback(eth::AssemblyItem const& _i) {
 	if (_i.type() == Operation) {
 		ret = true;  // will be set to false again if we don't change the instruction
 		switch (_i.instruction()) {
+			case Instruction::SELFDESTRUCT:
+				m_errorReporter.warning(
+					assemblyPtr()->getSourceLocation(),
+					"SELFDESTRUCT opcode is currently not supported."
+				);
+				ret = false;
+				break;
 			case Instruction::SSTORE:
 				simpleRewrite("ovmSSTORE()", 2, 0);
 				break;
