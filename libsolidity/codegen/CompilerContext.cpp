@@ -115,9 +115,8 @@ void CompilerContext::simpleRewrite(string function, int _in, int _out, bool opt
 
 		if eq(success, 0) {
 			let result := mload(0x40)
-			let resultdata := add(result, 0x20)
-			returndatacopy(resultdata, 0, returndatasize())
-			revert(resultdata, returndatasize())
+			returndatacopy(result, 0, returndatasize())
+			revert(result, returndatasize())
 		}
 
 		<output>
@@ -145,9 +144,8 @@ bool CompilerContext::appendCallback(eth::AssemblyItem const& _i) {
 		let success := kall(callBytes, add(0x24, argsLength), retOffset, retLength)
 		if eq(success, 0) {
 			let result := mload(0x40)
-			let resultdata := add(result, 0x20)
-			returndatacopy(resultdata, 0, returndatasize())
-			revert(resultdata, returndatasize())
+			returndatacopy(result, 0, returndatasize())
+			revert(result, returndatasize())
 		}
 
 		retLength := success
