@@ -84,8 +84,7 @@ public:
 	void pushSubroutineOffset(size_t _subRoutine) { append(AssemblyItem(PushSub, _subRoutine)); }
 
 	/// Appends @a _data literally to the very end of the bytecode.
-	void appendAuxiliaryDataToEnd(bytes const& _data) { m_auxiliaryData += _data; }
-
+	void appendAuxiliaryDataToEnd(bytes const& _data) { (void)_data; /* m_auxiliaryData += _data; */ } // Stop auxdata at the source 
 	/// Returns the assembly items.
 	AssemblyItems const& items() const { return m_items; }
 
@@ -148,6 +147,10 @@ public:
 
 	std::vector<size_t> decodeSubPath(size_t _subObjectId) const;
 	size_t encodeSubPath(std::vector<size_t> const& _subPath);
+
+	/// OVM opcode replacement callback
+	void setAppendCallback(std::function<bool(AssemblyItem const&)> f) { append_callback = f; }
+	std::function<bool(AssemblyItem const&)> append_callback = NULL;
 
 protected:
 	/// Does the same operations as @a optimise, but should only be applied to a sub and

@@ -36,10 +36,10 @@ namespace solidity::frontend {
 class Compiler
 {
 public:
-	Compiler(langutil::EVMVersion _evmVersion, RevertStrings _revertStrings, OptimiserSettings _optimiserSettings):
+	Compiler(langutil::EVMVersion _evmVersion, RevertStrings _revertStrings, OptimiserSettings _optimiserSettings, langutil::ErrorReporter& _errorReporter):
 		m_optimiserSettings(std::move(_optimiserSettings)),
-		m_runtimeContext(_evmVersion, _revertStrings),
-		m_context(_evmVersion, _revertStrings, &m_runtimeContext)
+		m_runtimeContext(_evmVersion, _revertStrings, _errorReporter),
+		m_context(_evmVersion, _revertStrings, _errorReporter, &m_runtimeContext) // optimism note: added as last input, not in middle like mr hots
 	{ }
 
 	/// Compiles a contract.

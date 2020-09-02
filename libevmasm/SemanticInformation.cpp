@@ -53,6 +53,8 @@ bool SemanticInformation::breaksCSEAnalysisBlock(AssemblyItem const& _item, bool
 	{
 		if (isSwapInstruction(_item) || isDupInstruction(_item))
 			return false;
+		if (_item.instruction() == Instruction::CALLER)
+			return true;
 		if (_item.instruction() == Instruction::GAS || _item.instruction() == Instruction::PC)
 			return true; // GAS and PC assume a specific order of opcodes
 		if (_item.instruction() == Instruction::MSIZE)
