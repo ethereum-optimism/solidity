@@ -110,7 +110,7 @@ void CompilerContext::simpleRewrite(string function, int _in, int _out, bool opt
 		<input1>
 		<input2>
 		// overwrite call params
-		let success := kall(callBytes, <in_size>, callBytes, <out_size>)
+		let success := call(gas(), caller(), 0, callBytes, <in_size>, callBytes, <out_size>)
 		if eq(success, 0) {
 			let result := mload(0x40)
 			returndatacopy(result, 0, returndatasize())
@@ -137,7 +137,7 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 		for { let ptr := 0 } lt(ptr, argsLength) { ptr := add(ptr, 0x20) } {
 			mstore(add(add(callBytes, 0x24), ptr), mload(add(argsOffset, ptr)))
 		}
-		let success := kall(callBytes, add(0x24, argsLength), retOffset, retLength)
+		let success := call(gas(), caller(), 0, callBytes, add(0x24, argsLength), retOffset, retLength)
 		if eq(success, 0) {
 			let result := mload(0x40)
 			returndatacopy(result, 0, returndatasize())
@@ -150,7 +150,7 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 		auto dat = assemblyPtr()->data(_i.data());
 		if (std::find(dat.begin(), dat.end(), 0x5b) != dat.end()) {
 			m_errorReporter.warning(
-				0000_error,
+				7608_error,
 				assemblyPtr()->currentSourceLocation(),
 				"OVM: JUMPDEST found in constant");
 		}
@@ -209,7 +209,7 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 						for { let ptr := 0 } lt(ptr, length) { ptr := add(ptr, 0x20) } {
 							mstore(add(add(callBytes, 4), ptr), mload(add(offset, ptr)))
 						}
-						let success := kall(callBytes, add(4, length), callBytes, 0x20)
+						let success := call(gas(), caller(), 0, callBytes, add(4, length), callBytes, 0x20)
 						if eq(success, 0) { revert(0, 0) }
 						length := mload(callBytes)
 					})",
@@ -221,7 +221,7 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 						for { let ptr := 0 } lt(ptr, length) { ptr := add(ptr, 0x20) } {
 							mstore(add(add(callBytes, 0x24), ptr), mload(add(offset, ptr)))
 						}
-						let success := kall(callBytes, add(0x24, length), callBytes, 0x20)
+						let success := call(gas(), caller(), 0, callBytes, add(0x24, length), callBytes, 0x20)
 						if eq(success, 0) { revert(0, 0) }
 						salt := mload(callBytes)
 					})",
@@ -232,7 +232,7 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 						mstore(add(callBytes, 4), addr)
 						mstore(add(callBytes, 0x24), offset)
 						mstore(add(callBytes, 0x44), length)
-						let success := kall(callBytes, 0x64, destOffset, length)
+						let success := call(gas(), caller(), 0, callBytes, 0x64, destOffset, length)
 						if eq(success, 0) { revert(0, 0) }
 					})",
 					{"length", "offset", "destOffset", "addr"});
@@ -241,7 +241,7 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 			case Instruction::RETURNDATASIZE:
 				if (m_is_building_user_asm) {
 					m_errorReporter.warning(
-						0000_error,
+						7742_error,
 						assemblyPtr()->currentSourceLocation(),
 						"OVM: Using RETURNDATASIZE or RETURNDATACOPY in user asm isn't guaranteed to work");
 				}
