@@ -94,7 +94,7 @@ pair<YulString, BuiltinFunctionForEVM> createFunction(
 	std::function<void(FunctionCall const&, AbstractAssembly&, BuiltinContext&, std::function<void(Expression const&)>)> _generateCode
 )
 {
-	yulAssert(_literalArguments.size() == _params || _literalArguments.empty(), "");
+	yulAssert(_literalArguments.size() == _params || _literalArguments.empty(), "BuiltInFunctionForEVM creation failed: _literalArguments is non-empty but does not match _params count");
 
 	YulString name{std::move(_name)};
 	BuiltinFunctionForEVM f;
@@ -128,26 +128,26 @@ map<YulString, BuiltinFunctionForEVM> createBuiltins(langutil::EVMVersion _evmVe
 		)
 			builtins.emplace(createEVMFunction(instr.first, instr.second));
 
-	// builtins.emplace(createFunction(
-	// 		"kall",
-	// 		4,
-	// 		1,
-	// 		SideEffects{false, false, false, false, true},
-	// 		{false},
-	// 		[](
-	// 			FunctionCall const& _call,
-	// 			AbstractAssembly& _assembly,
-	// 			BuiltinContext&,
-	// 			std::function<void(Expression const&)> _visitExpression
-	// 		) {
-	// 			visitArguments(_assembly, _call, _visitExpression);
-	// 			_assembly.appendInstruction(evmasm::Instruction::CALLER);
-	// 			_assembly.appendConstant(0);
-	// 			_assembly.appendInstruction(evmasm::Instruction::SWAP1);
-	// 			_assembly.appendInstruction(evmasm::Instruction::GAS);
-	// 			_assembly.appendInstruction(evmasm::Instruction::CALL);
-	// 		}
-	// 	));
+	builtins.emplace(createFunction(
+			"kall",
+			4,
+			1,
+			SideEffects{false, false, false, false, true},
+			{false, false, false, false},
+			[](
+				FunctionCall const& _call,
+				AbstractAssembly& _assembly,
+				BuiltinContext&,
+				std::function<void(Expression const&)> _visitExpression
+			) {
+				visitArguments(_assembly, _call, _visitExpression);
+				_assembly.appendInstruction(evmasm::Instruction::CALLER);
+				_assembly.appendConstant(0);
+				_assembly.appendInstruction(evmasm::Instruction::SWAP1);
+				_assembly.appendInstruction(evmasm::Instruction::GAS);
+				_assembly.appendInstruction(evmasm::Instruction::CALL);
+			}
+		));
 
 	if (_objectAccess)
 	{
