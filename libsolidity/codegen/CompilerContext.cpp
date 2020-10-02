@@ -117,9 +117,9 @@ void CompilerContext::simpleRewrite(string function, int _in, int _out, bool opt
 			revert(result, returndatasize())
 		}
 		<output>
-		// overwrite the memory we used back to zero so that it does not mess with downstream use of memory (e.g. bytes)
-		// I arbitrarily chose 512 bytes, it's overkill but def should work
-		for { let ptr := 0 } lt(ptr, 0x200) { ptr := add(ptr, 0x20) } {
+		// overwrite the memory we used back to zero so that it does not mess with downstream use of memory (e.g. bytes memory)
+		// need to make larger than 0x40 if we ever use this for inputs exceeding 32*3 bytes in length
+		for { let ptr := 0 } lt(ptr, 0x40) { ptr := add(ptr, 0x20) } {
 			mstore(add(callBytes, ptr), 0)
 		}
 	})");
