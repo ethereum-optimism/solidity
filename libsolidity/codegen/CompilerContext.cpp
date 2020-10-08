@@ -138,18 +138,41 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 	m_disable_rewrite = true;
 
 	auto callYUL = R"(
-		mstore(add(callBytes, 4), addr)
+		// store parts of memory which will be overwritten by compiler-unexpected returndata
+		let oldMem0 := mload(sub(retOffset, 0x60))
+		let oldMem1 := mload(sub(retOffset, 0x40))
+		let oldMem2 := mload(sub(retOffset, 0x20))
+
+		// store _gasLimit
+		mstore(add(callBytes, 0x04), in_gas)
+		// store _address
+		mstore(add(callBytes, 0x24), addr)
+		// store abi byte memory offset bullshit
+		mstore(add(callBytes, 0x44), 0x60)
+		// store bytes memory _calldata.length
+		mstore(add(callBytes, 0x64), argsLength)
+		// store bytes memory _calldata raw data
+		let rawCallBytes := add(callBytes, 0x84)
 		for { let ptr := 0 } lt(ptr, argsLength) { ptr := add(ptr, 0x20) } {
-			mstore(add(add(callBytes, 0x24), ptr), mload(add(argsOffset, ptr)))
+			mstore(add(rawCallBytes, ptr), mload(add(argsOffset, ptr)))
 		}
-		let success := kall(callBytes, add(0x24, argsLength), retOffset, retLength)
+		// kall accounting for 0x40 extra returndata (bool _success and length for abi-encoded returndata)
+		let success := kall(callBytes, add(0x84, argsLength), sub(retOffset, 0x60), add(retLength, 0x60))
 		if eq(success, 0) {
 			let result := mload(0x40)
 			returndatacopy(result, 0, returndatasize())
 			revert(result, returndatasize())
 		}
-		retLength := success
-	})";
+		// get _success
+		retLength := mload(sub(retOffset, 0x60))
+		// put back memory
+		mstore(sub(retOffset, 0x60), oldMem0)
+		mstore(sub(retOffset, 0x40), oldMem1)
+		mstore(sub(retOffset, 0x20), oldMem2)
+		// call identity to reset the returndatalength and returndatacopy functionality
+		// TODO: enable returndatacopy before this can work
+		//pop(call(gas(), 0x04, 0, retOffset, retLength, 0, 0))
+	})"; 
 
 	if (_i.type() == PushData) {
 		auto dat = assemblyPtr()->data(_i.data());
@@ -166,16 +189,16 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 		ret = true;  // will be set to false again if we don't change the instruction
 		switch (_i.instruction()) {
 			case Instruction::SSTORE:
-				simpleRewrite("ovmSSTORE()", 2, 0);
+				simpleRewrite("ovmSSTORE(bytes32,bytes32)", 2, 0);
 				break;
 			case Instruction::SLOAD:
-				simpleRewrite("ovmSLOAD()", 1, 1);
+				simpleRewrite("ovmSLOAD(bytes32)", 1, 1);
 				break;
 			case Instruction::EXTCODESIZE:
-				simpleRewrite("ovmEXTCODESIZE()", 1, 1);
+				simpleRewrite("ovmEXTCODESIZE(address)", 1, 1);
 				break;
 			case Instruction::EXTCODEHASH:
-				simpleRewrite("ovmEXTCODEHASH()", 1, 1);
+				simpleRewrite("ovmEXTCODEHASH(address)", 1, 1);
 				break;
 			case Instruction::CALLER:
 				simpleRewrite("ovmCALLER()", 0, 1);
@@ -198,19 +221,19 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 				simpleRewrite("ovmORIGIN()", 0, 1);
 				break;
 			case Instruction::CALL:
-				complexRewrite("ovmCALL()", 7, 1, callYUL,
+				complexRewrite("ovmCALL(uint256,address,bytes)", 7, 1, callYUL,
 					{"retLength", "retOffset", "argsLength", "argsOffset", "value", "addr", "in_gas"});
 				break;
 			case Instruction::STATICCALL:
-				complexRewrite("ovmSTATICCALL()", 6, 1, callYUL,
+				complexRewrite("ovmSTATICCALL(uint256,address,bytes)", 6, 1, callYUL,
 					{"retLength", "retOffset", "argsLength", "argsOffset", "addr", "in_gas"});
 				break;
 			case Instruction::DELEGATECALL:
-				complexRewrite("ovmDELEGATECALL()", 6, 1, callYUL,
+				complexRewrite("ovmDELEGATECALL(uint256,address,bytes)", 6, 1, callYUL,
 					{"retLength", "retOffset", "argsLength", "argsOffset", "addr", "in_gas"});
 				break;
 			case Instruction::CREATE:
-				complexRewrite("ovmCREATE()", 3, 1, R"(
+				complexRewrite("ovmCREATE(bytes)", 3, 1, R"(
 						for { let ptr := 0 } lt(ptr, length) { ptr := add(ptr, 0x20) } {
 							mstore(add(add(callBytes, 4), ptr), mload(add(offset, ptr)))
 						}
@@ -221,7 +244,7 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 					{"length", "offset", "value"});
 				break;
 			case Instruction::CREATE2:
-				complexRewrite("ovmCREATE2()", 4, 1, R"(
+				complexRewrite("ovmCREATE2(bytes,bytes32)", 4, 1, R"(
 						mstore(add(callBytes, 4), salt)
 						for { let ptr := 0 } lt(ptr, length) { ptr := add(ptr, 0x20) } {
 							mstore(add(add(callBytes, 0x24), ptr), mload(add(offset, ptr)))
@@ -233,7 +256,7 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 					{"salt", "length", "offset", "value"});
 				break;
 			case Instruction::EXTCODECOPY:
-				complexRewrite("ovmEXTCODECOPY()", 4, 0, R"(
+				complexRewrite("ovmEXTCODECOPY(address,uint256,uint256)", 4, 0, R"(
 						mstore(add(callBytes, 4), addr)
 						mstore(add(callBytes, 0x24), offset)
 						mstore(add(callBytes, 0x44), length)
