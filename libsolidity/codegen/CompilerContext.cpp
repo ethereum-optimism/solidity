@@ -138,10 +138,6 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 	m_disable_rewrite = true;
 
 	auto callYUL = R"(
-		// store parts of memory which will be overwritten by compiler-unexpected returndata
-		let oldMem0 := mload(sub(retOffset, 0x60))
-		let oldMem1 := mload(sub(retOffset, 0x40))
-		let oldMem2 := mload(sub(retOffset, 0x20))
 
 		// store _gasLimit
 		mstore(add(callBytes, 0x04), in_gas)
@@ -156,22 +152,31 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 		for { let ptr := 0 } lt(ptr, argsLength) { ptr := add(ptr, 0x20) } {
 			mstore(add(rawCallBytes, ptr), mload(add(argsOffset, ptr)))
 		}
-		// kall accounting for 0x40 extra returndata (bool _success and length for abi-encoded returndata)
-		let success := kall(callBytes, add(0x84, argsLength), sub(retOffset, 0x60), add(retLength, 0x60))
-		if eq(success, 0) {
-			let result := mload(0x40)
-			returndatacopy(result, 0, returndatasize())
-			revert(result, returndatasize())
-		}
+		// we will return to where the calldata ends.  Overpadded to ensure that we do sufficient trailing zeros for ABI encoding
+		let endOfArgs := add(callBytes, add(0x104, argsLength))
+		// kall, only grabbing 3 words of returndata (success & abi encoding stuff) and just throw on top of where we put it
+		// 104 is overkill, done to ensure sufficient right padding for abi encoding
+		let success := kall(callBytes, add(0x104, argsLength), callBytes, 0x60)
+
 		// get _success
-		retLength := mload(sub(retOffset, 0x60))
-		// put back memory
-		mstore(sub(retOffset, 0x60), oldMem0)
-		mstore(sub(retOffset, 0x40), oldMem1)
-		mstore(sub(retOffset, 0x20), oldMem2)
-		// call identity to reset the returndatalength and returndatacopy functionality
-		// TODO: enable returndatacopy before this can work
-		//pop(call(gas(), 0x04, 0, retOffset, retLength, 0, 0))
+		let wasSuccess := mload(callBytes)
+
+		// get abi length of _data output by EM
+		let returnedDataLengthFromABI := mload(add(callBytes, 0x40))
+		
+		// call identity precompile with ALL raw returndata (ignores bool and abi) to make returndatasize() correct.
+		// also copies the relevant data back to the CALL's intended vals (retOffset, retLength)
+		returndatacopy(callBytes, 0, returndatasize())
+		pop(call(gas(), 0x04, 0, add(callBytes, 0x60), returnedDataLengthFromABI, retOffset, retLength))
+
+		// remove all the stuff we did at callbytes
+		let newMemSize := msize()
+		for { let ptr := callBytes } lt(ptr, newMemSize) { ptr := add(ptr, 0x20) } {
+			mstore(add(callBytes, ptr), 0x00)
+		}
+
+		// set the first stack element out, this looks weird but it's really saying this is the intended stack output of the replaced EVM operation
+		retLength := wasSuccess
 	})"; 
 
 	if (_i.type() == PushData) {
@@ -234,24 +239,53 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 				break;
 			case Instruction::CREATE:
 				complexRewrite("ovmCREATE(bytes)", 3, 1, R"(
+						// methodId is stored for us at callBytes
+						let dataStart := add(callBytes, 4)
+						// store abi offset
+						mstore(dataStart, 0x20)
+						// store abi length
+						mstore(add(dataStart, 0x20), length)
+						// store bytecode itself
 						for { let ptr := 0 } lt(ptr, length) { ptr := add(ptr, 0x20) } {
-							mstore(add(add(callBytes, 4), ptr), mload(add(offset, ptr)))
+							mstore(add(add(dataStart, 0x40), ptr), mload(add(offset, ptr)))
 						}
-						let success := kall(callBytes, add(4, length), callBytes, 0x20)
-						if eq(success, 0) { revert(0, 0) }
+						// technically 0x44 is the minimum needed to add to length, but ABI wants right-padding so we overpad by 0x20.
+						let success := kall(callBytes, add(0x64, length), callBytes, 0x20)
+						// legnth is first stack val in ==> first stack val out (address)
 						length := mload(callBytes)
+
+						// remove all the stuff we did at callbytes.
+						let newMemSize := msize()
+						for { let ptr := callBytes } lt(ptr, newMemSize) { ptr := add(ptr, 0x20) } {
+							mstore(add(callBytes, ptr), 0x00)
+						}
 					})",
 					{"length", "offset", "value"});
 				break;
 			case Instruction::CREATE2:
 				complexRewrite("ovmCREATE2(bytes,bytes32)", 4, 1, R"(
-						mstore(add(callBytes, 4), salt)
+						// methodId is stored for us at callBytes
+						let dataStart := add(callBytes, 4)
+						// store abi offset
+						mstore(dataStart, 0x40)
+						// store salt
+						mstore(add(dataStart. 0x20), salt)
+						// store abi length
+						mstore(add(dataStart, 0x40), length)
+						// store bytecode itself
 						for { let ptr := 0 } lt(ptr, length) { ptr := add(ptr, 0x20) } {
-							mstore(add(add(callBytes, 0x24), ptr), mload(add(offset, ptr)))
+							mstore(add(add(dataStart, 0x60), ptr), mload(add(offset, ptr)))
 						}
-						let success := kall(callBytes, add(0x24, length), callBytes, 0x20)
-						if eq(success, 0) { revert(0, 0) }
+						// technically 0x64 is the minimum needed to add to length, but ABI wants right-padding so we overpad by 0x20.
+						let success := kall(callBytes, add(0x84, length), callBytes, 0x20)
+						// salt is first stack val in ==> first stack val out (address)
 						salt := mload(callBytes)
+
+						// remove all the stuff we did at callbytes.
+						let newMemSize := msize()
+						for { let ptr := callBytes } lt(ptr, newMemSize) { ptr := add(ptr, 0x20) } {
+							mstore(add(callBytes, ptr), 0x00)
+						}
 					})",
 					{"salt", "length", "offset", "value"});
 				break;
