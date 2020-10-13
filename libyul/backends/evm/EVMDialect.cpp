@@ -131,7 +131,7 @@ map<YulString, BuiltinFunctionForEVM> createBuiltins(langutil::EVMVersion _evmVe
 	builtins.emplace(createFunction(
 			"kall",
 			4,
-			1,
+			0,
 			SideEffects{false, false, false, false, true},
 			{false, false, false, false},
 			[](
@@ -140,12 +140,74 @@ map<YulString, BuiltinFunctionForEVM> createBuiltins(langutil::EVMVersion _evmVe
 				BuiltinContext&,
 				std::function<void(Expression const&)> _visitExpression
 			) {
+				auto newlabel1 = _assembly.newLabelId();
+				auto newlabel2 = _assembly.newLabelId();
+				// _assembly.appendJumpTo(newlabel1);
+				// _assembly.appendJumpTo(newlabel2);
+
 				visitArguments(_assembly, _call, _visitExpression);
+								_assembly.appendJumpTo(newlabel1);
+
 				_assembly.appendInstruction(evmasm::Instruction::CALLER);
 				_assembly.appendConstant(0);
 				_assembly.appendInstruction(evmasm::Instruction::SWAP1);
 				_assembly.appendInstruction(evmasm::Instruction::GAS);
 				_assembly.appendInstruction(evmasm::Instruction::CALL);
+				_assembly.appendInstruction(evmasm::Instruction::PC);
+				_assembly.appendConstant(29);
+				_assembly.appendInstruction(evmasm::Instruction::ADD);
+				_assembly.appendInstruction(evmasm::Instruction::JUMPI);
+				_assembly.appendInstruction(evmasm::Instruction::PC);
+				_assembly.appendConstant(18);
+				_assembly.appendInstruction(evmasm::Instruction::ADD);
+				_assembly.appendInstruction(evmasm::Instruction::RETURNDATASIZE);
+				_assembly.appendConstant(1);
+				_assembly.appendInstruction(evmasm::Instruction::EQ);
+				_assembly.appendInstruction(evmasm::Instruction::JUMPI);
+				_assembly.appendInstruction(evmasm::Instruction::RETURNDATASIZE);
+				_assembly.appendConstant(0);
+				_assembly.appendInstruction(evmasm::Instruction::DUP1);
+				_assembly.appendInstruction(evmasm::Instruction::RETURNDATACOPY);
+				_assembly.appendInstruction(evmasm::Instruction::RETURNDATASIZE);
+				_assembly.appendConstant(0);
+				_assembly.appendRawCode(
+					// PUSH1 0x01 PUSH1 0x00 mstore
+					bytes{0x60, 0x01, 0x60, 0x50}
+				);
+				_assembly.appendInstruction(evmasm::Instruction::REVERT);
+
+
+				// _assembly.appendInstruction(evmasm::Instruction::JUMPDEST);
+				_assembly.appendLabel(newlabel1);
+
+				_assembly.appendConstant(1);
+				_assembly.appendConstant(0);
+
+				_assembly.appendInstruction(evmasm::Instruction::COINBASE);
+				_assembly.appendConstant(0);
+				_assembly.appendInstruction(evmasm::Instruction::MSTORE);
+
+
+
+
+				_assembly.appendInstruction(evmasm::Instruction::RETURN);
+				_assembly.appendLabel(newlabel2);
+
+				
+				_assembly.appendInstruction(evmasm::Instruction::ORIGIN);
+				_assembly.appendConstant(0);
+				_assembly.appendInstruction(evmasm::Instruction::MSTORE);
+
+				
+				// _assembly.appendInstruction(evmasm::Instruction::JUMPDEST);
+				
+				
+				// _assembly.appendRawCode(
+				// 	// PUSH1 0x01 PUSH1 0x00 RETURN JUMPDEST
+				// 	bytes{0x60, 0x01, 0x60, 0x00, 0xf3, 0x5b}
+				// );
+				// _assembly.appendLabel
+
 			}
 		));
 

@@ -34,6 +34,14 @@ using namespace solidity::yul;
 using namespace solidity::util;
 using namespace solidity::langutil;
 
+// BEGIN: OVM ADDITIONS
+void NoOutputAssembly::appendRawCode(solidity::bytes _data)
+{
+	// hack to shut the compiler up about unused stuff
+	int zero = _data.max_size() - _data.max_size();
+	yulAssert(zero == 0, "silly compiler!");
+}
+// END: OVM ADDITIONS
 
 void NoOutputAssembly::appendInstruction(evmasm::Instruction _instr)
 {

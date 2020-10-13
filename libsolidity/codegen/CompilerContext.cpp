@@ -110,12 +110,7 @@ void CompilerContext::simpleRewrite(string function, int _in, int _out, bool opt
 		<input1>
 		<input2>
 		// overwrite call params
-		let success := kall(callBytes, <in_size>, callBytes, <out_size>)
-		if eq(success, 0) {
-			let result := mload(0x40)
-			returndatacopy(result, 0, returndatasize())
-			revert(result, returndatasize())
-		}
+		kall(callBytes, <in_size>, callBytes, <out_size>)
 		<output>
 		// overwrite the memory we used back to zero so that it does not mess with downstream use of memory (e.g. bytes memory)
 		// need to make larger than 0x40 if we ever use this for inputs exceeding 32*3 bytes in length
@@ -156,7 +151,7 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 		let endOfArgs := add(callBytes, add(0x104, argsLength))
 		// kall, only grabbing 3 words of returndata (success & abi encoding stuff) and just throw on top of where we put it
 		// 104 is overkill, done to ensure sufficient right padding for abi encoding
-		let success := kall(callBytes, add(0x104, argsLength), callBytes, 0x60)
+		kall(callBytes, add(0x104, argsLength), callBytes, 0x60)
 
 		// get _success
 		let wasSuccess := mload(callBytes)
@@ -250,7 +245,7 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 							mstore(add(add(dataStart, 0x40), ptr), mload(add(offset, ptr)))
 						}
 						// technically 0x44 is the minimum needed to add to length, but ABI wants right-padding so we overpad by 0x20.
-						let success := kall(callBytes, add(0x64, length), callBytes, 0x20)
+						kall(callBytes, add(0x64, length), callBytes, 0x20)
 						// legnth is first stack val in ==> first stack val out (address)
 						length := mload(callBytes)
 
@@ -277,7 +272,7 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 							mstore(add(add(dataStart, 0x60), ptr), mload(add(offset, ptr)))
 						}
 						// technically 0x64 is the minimum needed to add to length, but ABI wants right-padding so we overpad by 0x20.
-						let success := kall(callBytes, add(0x84, length), callBytes, 0x20)
+						kall(callBytes, add(0x84, length), callBytes, 0x20)
 						// salt is first stack val in ==> first stack val out (address)
 						salt := mload(callBytes)
 
@@ -294,8 +289,7 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 						mstore(add(callBytes, 4), addr)
 						mstore(add(callBytes, 0x24), offset)
 						mstore(add(callBytes, 0x44), length)
-						let success := kall(callBytes, 0x64, destOffset, length)
-						if eq(success, 0) { revert(0, 0) }
+						kall(callBytes, 0x64, destOffset, length)
 					})",
 					{"length", "offset", "destOffset", "addr"});
 				break;

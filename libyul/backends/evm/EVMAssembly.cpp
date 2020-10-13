@@ -38,6 +38,16 @@ size_t constexpr labelReferenceSize = 4;
 size_t constexpr assemblySizeReferenceSize = 4;
 }
 
+// BEGIN: OVM ADDITIONS
+
+void EVMAssembly::appendRawCode(solidity::bytes _data)
+{
+	m_bytecode += _data;
+	// m_stackHeight += _stackChange;
+}
+
+// END: OVM ADDITIONS
+
 
 void EVMAssembly::setSourceLocation(SourceLocation const&)
 {

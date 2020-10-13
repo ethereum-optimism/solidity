@@ -44,6 +44,16 @@ using namespace solidity::yul;
 using namespace solidity::util;
 using namespace solidity::langutil;
 
+// BEGIN: OVM ADDITIONS
+void EthAssemblyAdapter::appendRawCode(solidity::bytes _data)
+{
+	// hack to shut the compiler up about unused stuff
+	int zero = _data.max_size() - _data.max_size();
+	yulAssert(zero == 0, "silly compiler!");
+}
+// END: OVM ADDITIONS
+
+
 EthAssemblyAdapter::EthAssemblyAdapter(evmasm::Assembly& _assembly):
 	m_assembly(_assembly)
 {

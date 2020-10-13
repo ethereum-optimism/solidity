@@ -39,6 +39,9 @@ struct Block;
 class EthAssemblyAdapter: public AbstractAssembly
 {
 public:
+	// OVM: Unimplemented for this class.
+	void appendRawCode(solidity::bytes _data) override;
+
 	explicit EthAssemblyAdapter(evmasm::Assembly& _assembly);
 	void setSourceLocation(langutil::SourceLocation const& _location) override;
 	int stackHeight() const override;
