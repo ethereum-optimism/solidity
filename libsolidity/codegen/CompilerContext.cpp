@@ -70,7 +70,7 @@ void CompilerContext::complexRewrite(string function, int _in, int _out,
 		let methodId := 0x<methodId>
 
 		// needed to fix synthetix
-		let callBytes := 0x80000
+		let callBytes := msize()
 
 		// replace the first 4 bytes with the right methodID
 		mstore(callBytes, shl(224, methodId))
@@ -120,6 +120,12 @@ void CompilerContext::simpleRewrite(string function, int _in, int _out, bool opt
 		}
 
 		<output>
+
+		// overwrite the memory we used back to zero so that it does not mess with downstream use of memory (e.g. bytes memory)
+		// need to make larger than 0x40 if we ever use this for inputs exceeding 32*2 bytes in length
+		for { let ptr := 0 } lt(ptr, 0x40) { ptr := add(ptr, 0x20) } {
+			mstore(add(callBytes, ptr), 0)
+		}
 	})");
 	asm_code("in_size", to_string(_in*0x20+4));
 	asm_code("out_size", to_string(_out*0x20));
