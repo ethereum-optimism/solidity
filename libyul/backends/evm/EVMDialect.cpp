@@ -163,12 +163,23 @@ map<YulString, BuiltinFunctionForEVM> createBuiltins(langutil::EVMVersion _evmVe
 				_assembly.appendConstant(29);
 				_assembly.appendInstruction(evmasm::Instruction::ADD);
 				_assembly.appendInstruction(evmasm::Instruction::JUMPI);
-				_assembly.appendInstruction(evmasm::Instruction::PC);
-				_assembly.appendConstant(18);
-				_assembly.appendInstruction(evmasm::Instruction::ADD);
+
+				// // OLD:
+				// _assembly.appendInstruction(evmasm::Instruction::PC);
+				// _assembly.appendConstant(18);
+				// _assembly.appendInstruction(evmasm::Instruction::ADD);
+				// _assembly.appendInstruction(evmasm::Instruction::RETURNDATASIZE);
+				// _assembly.appendConstant(1);
+				// _assembly.appendInstruction(evmasm::Instruction::EQ);
+
+				// new:
 				_assembly.appendInstruction(evmasm::Instruction::RETURNDATASIZE);
 				_assembly.appendConstant(1);
 				_assembly.appendInstruction(evmasm::Instruction::EQ);
+				_assembly.appendInstruction(evmasm::Instruction::PC);
+				_assembly.appendConstant(12);
+				_assembly.appendInstruction(evmasm::Instruction::ADD);
+
 				_assembly.appendInstruction(evmasm::Instruction::JUMPI);
 				_assembly.appendInstruction(evmasm::Instruction::RETURNDATASIZE);
 				_assembly.appendConstant(0);

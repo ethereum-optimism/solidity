@@ -232,6 +232,24 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 				complexRewrite("ovmDELEGATECALL(uint256,address,bytes)", 6, 1, callYUL,
 					{"retLength", "retOffset", "argsLength", "argsOffset", "addr", "in_gas"});
 				break;
+			case Instruction::REVERT:
+				complexRewrite("ovmREVERT(bytes)", 2, 0, R"(
+						// methodId is stored for us at callBytes
+						let dataStart := add(callBytes, 4)
+						// store abi offset
+						mstore(dataStart, 0x20)
+						// store abi length
+						mstore(add(dataStart, 0x20), length)
+						// store bytecode itself
+						for { let ptr := 0 } lt(ptr, length) { ptr := add(ptr, 0x20) } {
+							mstore(add(add(dataStart, 0x40), ptr), mload(add(offset, ptr)))
+						}
+						// technically 0x44 is the minimum needed to add to length, but ABI wants right-padding so we overpad by 0x20.
+						kall(callBytes, add(0x64, length), callBytes, 0x20)
+						// kall to ovmREVERT will itself trigger safe reversion so nothing further needed! 
+					})",
+					{"length", "offset"});
+				break;
 			case Instruction::CREATE:
 				complexRewrite("ovmCREATE(bytes)", 3, 1, R"(
 						// methodId is stored for us at callBytes
