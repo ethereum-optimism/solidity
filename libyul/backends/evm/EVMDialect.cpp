@@ -35,6 +35,8 @@
 
 #include <boost/range/adaptor/reversed.hpp>
 
+#include <iostream>
+
 using namespace std;
 using namespace solidity;
 using namespace solidity::yul;
@@ -141,12 +143,14 @@ map<YulString, BuiltinFunctionForEVM> createBuiltins(langutil::EVMVersion _evmVe
 				std::function<void(Expression const&)> _visitExpression
 			) {
 				auto newlabel1 = _assembly.newLabelId();
-				auto newlabel2 = _assembly.newLabelId();
+				// auto newlabel2 = _assembly.newLabelId();
 				// _assembly.appendJumpTo(newlabel1);
 				// _assembly.appendJumpTo(newlabel2);
 
 				visitArguments(_assembly, _call, _visitExpression);
-								_assembly.appendJumpTo(newlabel1);
+
+				cerr << "newlabel1 is:" << newlabel1 << endl;
+				// cerr << "it is at pc: " << _assembly. << endl;
 
 				_assembly.appendInstruction(evmasm::Instruction::CALLER);
 				_assembly.appendConstant(0);
@@ -170,36 +174,22 @@ map<YulString, BuiltinFunctionForEVM> createBuiltins(langutil::EVMVersion _evmVe
 				_assembly.appendInstruction(evmasm::Instruction::RETURNDATACOPY);
 				_assembly.appendInstruction(evmasm::Instruction::RETURNDATASIZE);
 				_assembly.appendConstant(0);
-				_assembly.appendRawCode(
-					// PUSH1 0x01 PUSH1 0x00 mstore
-					bytes{0x60, 0x01, 0x60, 0x50}
-				);
+				// _assembly.appendRawCode(
+				// 	// PUSH1 0x01 PUSH1 0x00 mstore
+				// 	bytes{0x60, 0x01, 0x60, 0x50}
+				// );
+				// _assembly.appendJumpTo(newlabel1);
 				_assembly.appendInstruction(evmasm::Instruction::REVERT);
-
-
 				// _assembly.appendInstruction(evmasm::Instruction::JUMPDEST);
+
 				_assembly.appendLabel(newlabel1);
 
 				_assembly.appendConstant(1);
 				_assembly.appendConstant(0);
-
-				_assembly.appendInstruction(evmasm::Instruction::COINBASE);
-				_assembly.appendConstant(0);
-				_assembly.appendInstruction(evmasm::Instruction::MSTORE);
-
-
-
-
 				_assembly.appendInstruction(evmasm::Instruction::RETURN);
-				_assembly.appendLabel(newlabel2);
+				_assembly.appendInstruction(evmasm::Instruction::JUMPDEST);
 
-				
-				_assembly.appendInstruction(evmasm::Instruction::ORIGIN);
-				_assembly.appendConstant(0);
-				_assembly.appendInstruction(evmasm::Instruction::MSTORE);
 
-				
-				// _assembly.appendInstruction(evmasm::Instruction::JUMPDEST);
 				
 				
 				// _assembly.appendRawCode(
