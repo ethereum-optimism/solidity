@@ -83,9 +83,12 @@ set<size_t> JumpdestRemover::referencedTags(AssemblyItems const& _items, size_t 
 				{
 					// cerr << "found first PC in kall(), the tagged jumpdests are: ";
 					cerr << "found PC with data of next item of " << addedToPC << endl;
-					cerr << "the 18th item after this is: " << _items[i+18];
+					cerr << "the 22nd item after this is: " << _items[i+22];
+					// todo: renmame thewse bad boyz
 					auto firstJumpdestSubAndTag = _items[i+18].splitForeignPushTag();
 					ret.insert(firstJumpdestSubAndTag.second);
+					auto secondJumpdestSubAndTag = _items[i+22].splitForeignPushTag();
+					ret.insert(secondJumpdestSubAndTag.second);
 					// cerr << "the next few opcodes are: ";
 					// for(size_t j=0; j < 30; ++j) {
 					// 	cerr << _items[i+j];

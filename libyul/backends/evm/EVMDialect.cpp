@@ -143,6 +143,7 @@ map<YulString, BuiltinFunctionForEVM> createBuiltins(langutil::EVMVersion _evmVe
 				std::function<void(Expression const&)> _visitExpression
 			) {
 				auto newlabel1 = _assembly.newLabelId();
+				auto newlabel2 = _assembly.newLabelId();
 				// auto newlabel2 = _assembly.newLabelId();
 				// _assembly.appendJumpTo(newlabel1);
 				// _assembly.appendJumpTo(newlabel2);
@@ -150,6 +151,7 @@ map<YulString, BuiltinFunctionForEVM> createBuiltins(langutil::EVMVersion _evmVe
 				visitArguments(_assembly, _call, _visitExpression);
 
 				cerr << "newlabel1 is:" << newlabel1 << endl;
+				cerr << "newlabel2 is:" << newlabel2 << endl;
 				// cerr << "it is at pc: " << _assembly. << endl;
 
 				_assembly.appendInstruction(evmasm::Instruction::CALLER);
@@ -187,7 +189,7 @@ map<YulString, BuiltinFunctionForEVM> createBuiltins(langutil::EVMVersion _evmVe
 				_assembly.appendConstant(1);
 				_assembly.appendConstant(0);
 				_assembly.appendInstruction(evmasm::Instruction::RETURN);
-				_assembly.appendInstruction(evmasm::Instruction::JUMPDEST);
+				_assembly.appendLabel(newlabel2);
 
 
 				
