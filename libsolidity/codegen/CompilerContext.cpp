@@ -206,6 +206,9 @@ bool CompilerContext::appendCallback(eth::AssemblyItem const& _i) {
 			case Instruction::GASLIMIT:
 				simpleRewrite("ovmGASLIMIT()", 0, 1);
 				break;
+			case Instruction::NUMBER:
+				simpleRewrite("ovmNUMBER()", 0, 1);
+				break;
 			case Instruction::ORIGIN:
 				simpleRewrite("ovmORIGIN()", 0, 1);
 				break;
