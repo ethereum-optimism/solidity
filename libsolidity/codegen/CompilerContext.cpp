@@ -170,11 +170,32 @@ bool CompilerContext::appendCallback(eth::AssemblyItem const& _i) {
 	if (_i.type() == Operation) {
 		ret = true;  // will be set to false again if we don't change the instruction
 		switch (_i.instruction()) {
-			case Instruction::SSTORE:
-				simpleRewrite("ovmSSTORE()", 2, 0);
+			case Instruction::BALANCE:
+			case Instruction::BLOCKHASH:
+			case Instruction::CALLCODE:
+			case Instruction::COINBASE:
+			case Instruction::DIFFICULTY:
+			case Instruction::GASPRICE:
+			case Instruction::SELFBALANCE:
+			case Instruction::SELFDESTRUCT:
+				m_errorReporter.parserError(
+					assemblyPtr()->getSourceLocation(),
+					"OVM: " +
+					instructionInfo(_i.instruction()).name +
+					" is a banned opcode"
+				);
+				ret = false;
 				break;
-			case Instruction::SLOAD:
-				simpleRewrite("ovmSLOAD()", 1, 1);
+			case Instruction::ADDRESS:
+				// address doesn't like to be optimized for some reason
+				// a very small price to pay
+				simpleRewrite("ovmADDRESS()", 0, 1, false);
+				break;
+			case Instruction::CALLER:
+				simpleRewrite("ovmCALLER()", 0, 1);
+				break;
+			case Instruction::CHAINID:
+				simpleRewrite("ovmCHAINID()", 0, 1);
 				break;
 			case Instruction::EXTCODESIZE:
 				simpleRewrite("ovmEXTCODESIZE()", 1, 1);
@@ -182,25 +203,20 @@ bool CompilerContext::appendCallback(eth::AssemblyItem const& _i) {
 			case Instruction::EXTCODEHASH:
 				simpleRewrite("ovmEXTCODEHASH()", 1, 1);
 				break;
-			case Instruction::CALLER:
-				simpleRewrite("ovmCALLER()", 0, 1);
-				break;
-			case Instruction::ADDRESS:
-				// address doesn't like to be optimized for some reason
-				// a very small price to pay
-				simpleRewrite("ovmADDRESS()", 0, 1, false);
-				break;
-			case Instruction::TIMESTAMP:
-				simpleRewrite("ovmTIMESTAMP()", 0, 1);
-				break;
-			case Instruction::CHAINID:
-				simpleRewrite("ovmCHAINID()", 0, 1);
-				break;
 			case Instruction::GASLIMIT:
 				simpleRewrite("ovmGASLIMIT()", 0, 1);
 				break;
 			case Instruction::ORIGIN:
 				simpleRewrite("ovmORIGIN()", 0, 1);
+				break;
+			case Instruction::SSTORE:
+				simpleRewrite("ovmSSTORE()", 2, 0);
+				break;
+			case Instruction::SLOAD:
+				simpleRewrite("ovmSLOAD()", 1, 1);
+				break;
+			case Instruction::TIMESTAMP:
+				simpleRewrite("ovmTIMESTAMP()", 0, 1);
 				break;
 			case Instruction::CALL:
 				complexRewrite("ovmCALL()", 7, 1, callYUL,
