@@ -126,7 +126,11 @@ struct OpPop: SimplePeepholeOptimizerMethod<OpPop, 2>
 		std::back_insert_iterator<AssemblyItems> _out
 	)
 	{
-		if (_pop == Instruction::POP && _op.type() == Operation)
+		
+		if (_pop == Instruction::POP && _op.type() == Operation 
+			// OVM: do not optimize CALLER POP as this is how we identify safe 0x04 precompile call.
+			&& _op.instruction() != Instruction::CALLER
+		)
 		{
 			Instruction instr = _op.instruction();
 			if (instructionInfo(instr).ret == 1 && !instructionInfo(instr).sideEffects)

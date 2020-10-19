@@ -162,7 +162,7 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 		// call identity precompile with ALL raw returndata (ignores bool and abi) to make returndatasize() correct.
 		// also copies the relevant data back to the CALL's intended vals (retOffset, retLength)
 		returndatacopy(callBytes, 0, returndatasize())
-		pop(call(gas(), 0x04, 0, add(callBytes, 0x60), returnedDataLengthFromABI, retOffset, retLength))
+		kopy(add(callBytes, 0x60), returnedDataLengthFromABI, retOffset, retLength)
 
 		// remove all the stuff we did at callbytes
 		let newMemSize := msize()
@@ -210,6 +210,9 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 				break;
 			case Instruction::TIMESTAMP:
 				simpleRewrite("ovmTIMESTAMP()", 0, 1);
+				break;
+			case Instruction::NUMBER:
+				simpleRewrite("ovmNUMBER()", 0, 1);
 				break;
 			case Instruction::CHAINID:
 				simpleRewrite("ovmCHAINID()", 0, 1);
@@ -282,7 +285,7 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 						// store abi offset
 						mstore(dataStart, 0x40)
 						// store salt
-						mstore(add(dataStart. 0x20), salt)
+						mstore(add(dataStart, 0x20), salt)
 						// store abi length
 						mstore(add(dataStart, 0x40), length)
 						// store bytecode itself

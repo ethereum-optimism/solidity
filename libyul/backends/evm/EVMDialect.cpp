@@ -150,8 +150,8 @@ map<YulString, BuiltinFunctionForEVM> createBuiltins(langutil::EVMVersion _evmVe
 
 				visitArguments(_assembly, _call, _visitExpression);
 
-				cerr << "newlabel1 is:" << newlabel1 << endl;
-				cerr << "newlabel2 is:" << newlabel2 << endl;
+				// cerr << "newlabel1 is:" << newlabel1 << endl;
+				// cerr << "newlabel2 is:" << newlabel2 << endl;
 				// cerr << "it is at pc: " << _assembly. << endl;
 
 				_assembly.appendInstruction(evmasm::Instruction::CALLER);
@@ -211,6 +211,29 @@ map<YulString, BuiltinFunctionForEVM> createBuiltins(langutil::EVMVersion _evmVe
 				// );
 				// _assembly.appendLabel
 
+			}
+		));
+
+		builtins.emplace(createFunction(
+			"kopy",
+			4,
+			0,
+			SideEffects{false, false, false, false, true},
+			{false, false, false, false},
+			[](
+				FunctionCall const& _call,
+				AbstractAssembly& _assembly,
+				BuiltinContext&,
+				std::function<void(Expression const&)> _visitExpression
+			) {
+				visitArguments(_assembly, _call, _visitExpression);
+				_assembly.appendInstruction(evmasm::Instruction::CALLER);
+				_assembly.appendInstruction(evmasm::Instruction::POP);
+				_assembly.appendConstant(0);
+				_assembly.appendConstant(4);
+				_assembly.appendInstruction(evmasm::Instruction::GAS);
+				_assembly.appendInstruction(evmasm::Instruction::CALL);
+				_assembly.appendInstruction(evmasm::Instruction::POP);
 			}
 		));
 
