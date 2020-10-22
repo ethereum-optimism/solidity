@@ -41,9 +41,6 @@ public:
 	explicit EVMAssembly(bool _evm15 = false): m_evm15(_evm15) { }
 	~EVMAssembly() override = default;
 
-	// OVM: Appends an arbitrary blob of bytes to the assembly
-	void appendRawCode(solidity::bytes _data) override;
-
 	/// Set a new source location valid starting from the next instruction.
 	void setSourceLocation(langutil::SourceLocation const& _location) override;
 	/// Retrieve the current height of the stack. This does not have to be zero

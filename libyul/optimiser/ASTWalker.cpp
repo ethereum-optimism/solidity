@@ -25,6 +25,8 @@
 
 #include <boost/range/adaptor/reversed.hpp>
 
+#include <iostream>
+
 using namespace std;
 using namespace solidity;
 using namespace solidity::yul;

@@ -27,6 +27,8 @@
 
 #include <boost/range/algorithm_ext/erase.hpp>
 
+#include <iostream>
+
 using namespace std;
 using namespace solidity;
 using namespace solidity::util;

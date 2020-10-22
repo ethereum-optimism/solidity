@@ -72,31 +72,31 @@ set<size_t> JumpdestRemover::referencedTags(AssemblyItems const& _items, size_t 
 			if (subAndTag.first == _subId)
 				ret.insert(subAndTag.second);
 		}
-		// BEGIN: OVM CHANGES.  Allows us to identify tags as referenced if they appear in PC PUSH ADD JUMP so they are not incorrectly removed.
-		if (item.type() == Operation)
-		{
-			if (item.instruction() == solidity::evmasm::Instruction::PC)
-			{
-				auto addedToPC = _items[i+1].data();
-				// matched first PC in "safe" pattern
-				if (addedToPC == 29)
-				{
-					// cerr << "found first PC in kall(), the tagged jumpdests are: ";
-					// cerr << "found PC with data of next item of " << addedToPC << endl;
-					// cerr << "the 22nd item after this is: " << _items[i+22];
-					// todo: renmame thewse bad boyz
-					auto firstJumpdestSubAndTag = _items[i+18].splitForeignPushTag();
-					ret.insert(firstJumpdestSubAndTag.second);
-					auto secondJumpdestSubAndTag = _items[i+22].splitForeignPushTag();
-					ret.insert(secondJumpdestSubAndTag.second);
-					// cerr << "the next few opcodes are: ";
-					// for(size_t j=0; j < 30; ++j) {
-					// 	cerr << _items[i+j];
-					// }				
-					// cerr << endl << " and the opcode at that offset is" << _items[i+addedToPC.convert_to<size_t>()] << endl;
-				}
-			}
-		}
+		// // BEGIN: OVM CHANGES.  Allows us to identify tags as referenced if they appear in PC PUSH ADD JUMP so they are not incorrectly removed.
+		// if (item.type() == Operation)
+		// {
+		// 	if (item.instruction() == solidity::evmasm::Instruction::PC)
+		// 	{
+		// 		auto addedToPC = _items[i+1].data();
+		// 		// matched first PC in "safe" pattern
+		// 		if (addedToPC == 29)
+		// 		{
+		// 			// cerr << "found first PC in kall(), the tagged jumpdests are: ";
+		// 			// cerr << "found PC with data of next item of " << addedToPC << endl;
+		// 			// cerr << "the 22nd item after this is: " << _items[i+22];
+		// 			// todo: renmame thewse bad boyz
+		// 			auto firstJumpdestSubAndTag = _items[i+18].splitForeignPushTag();
+		// 			ret.insert(firstJumpdestSubAndTag.second);
+		// 			auto secondJumpdestSubAndTag = _items[i+22].splitForeignPushTag();
+		// 			ret.insert(secondJumpdestSubAndTag.second);
+		// 			// cerr << "the next few opcodes are: ";
+		// 			// for(size_t j=0; j < 30; ++j) {
+		// 			// 	cerr << _items[i+j];
+		// 			// }				
+		// 			// cerr << endl << " and the opcode at that offset is" << _items[i+addedToPC.convert_to<size_t>()] << endl;
+		// 		}
+		// 	}
+		// }
 	}
 	return ret;
 }

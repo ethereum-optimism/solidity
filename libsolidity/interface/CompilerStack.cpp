@@ -72,6 +72,8 @@
 #include <boost/algorithm/string/replace.hpp>
 #include <utility>
 
+#include <iostream>
+
 using namespace std;
 using namespace solidity;
 using namespace solidity::langutil;
@@ -1034,6 +1036,44 @@ bool onlySafeExperimentalFeaturesActivated(set<ExperimentalFeature> const& featu
 }
 }
 
+// BEGIN OVM CHANGE
+// vector<size_t> findMatches(
+// 	bytes fullVector,
+// 	bytes subVectorToMatch
+// )
+// {
+// 	vector<size_t> results; //positions found
+// 	const auto srcBegin = fullVector.begin();
+// 	const auto srcEnd = fullVector.end();
+
+// 	for (auto nextIndex = srcBegin; nextIndex < srcEnd; nextIndex++)
+// 	{
+// 		const auto it = search(nextIndex, srcEnd, subVectorToMatch.begin(), fullVector.end());
+
+// 		if (it != srcEnd) {
+// 			unsigned long pos = static_cast<unsigned long>(distance(srcBegin, it));
+// 			results.push_back(pos);
+// 			nextIndex = srcBegin + static_cast<long>(pos);
+// 		}
+// 	}
+// 	return results;
+// }
+
+std::vector<std::size_t> findMatches(const bytes haystack,
+                                          const bytes needle)
+{
+    std::vector<std::size_t> indexes{};
+    auto it{haystack.begin()};
+    while ((it = std::search(it, haystack.end(), needle.begin(), needle.end())) != haystack.end())
+	{
+		auto dist = std::distance(haystack.begin(), it++);
+        indexes.push_back(static_cast<unsigned long>(dist));
+	}
+    return indexes;
+}
+
+// END OVM CHANGE
+
 void CompilerStack::compileContract(
 	ContractDefinition const& _contract,
 	map<ContractDefinition const*, shared_ptr<Compiler const>>& _otherCompilers
@@ -1072,6 +1112,33 @@ void CompilerStack::compileContract(
 	{
 		// Assemble deployment (incl. runtime)  object.
 		compiledContract.object = compiler->assembledObject();
+
+		// compiledContract.object.bytecode.erase(compiledContract.object.bytecode.begin());
+
+		bytes kallAsBytes{ 51, 96, 0, 144, 90, 241, 88, 96, 29, 1, 87, 61, 96, 1, 20, 88, 96, 12, 1, 87, 61, 96, 0, 128, 62, 61, 96, 0, 253, 91, 96, 1, 96, 0, 243, 91  }; // kall
+
+		bytes kallPlaceholder{ 51, 96, 0, 144, 90, 241, 88, 96, 29, 1, 87, 61, 96, 1, 20, 88, 96, 12, 1, 87, 61, 96, 0, 128, 62, 61, 98, 18, 52, 86, 82, 96, 234, 96, 156, 82 }; // kall placeholder
+
+
+		// match and correct initcode
+
+		auto initcodeMatches = findMatches(
+			compiledContract.object.bytecode,
+			kallPlaceholder
+		);
+
+		// cerr << "time to check this bytecode!!: " << compiledContract.object.bytecode << endl;
+		cerr << "found " << initcodeMatches.size() << " matches in initcode at: ";// << matches.data() << endl;
+		for(unsigned int i=0; i < static_cast<unsigned int>(initcodeMatches.size()); i++)
+		{
+			size_t matchIndex = initcodeMatches.at(i);
+   			cerr << matchIndex << ", ";
+			copy(kallAsBytes.begin(), kallAsBytes.end(), compiledContract.object.bytecode.begin() + static_cast<long>(matchIndex));
+		}
+
+		cerr << endl;
+		// cerr << "now that bytecode is: " << compiledContract.object.bytecode << endl;
+
 	}
 	catch(evmasm::AssemblyException const&)
 	{
@@ -1082,6 +1149,25 @@ void CompilerStack::compileContract(
 	{
 		// Assemble runtime object.
 		compiledContract.runtimeObject = compiler->runtimeObject();
+
+		bytes kallAsBytes{ 51, 96, 0, 144, 90, 241, 88, 96, 29, 1, 87, 61, 96, 1, 20, 88, 96, 12, 1, 87, 61, 96, 0, 128, 62, 61, 96, 0, 253, 91, 96, 1, 96, 0, 243, 91  }; // kall
+
+		bytes kallPlaceholder{ 51, 96, 0, 144, 90, 241, 88, 96, 29, 1, 87, 61, 96, 1, 20, 88, 96, 12, 1, 87, 61, 96, 0, 128, 62, 61, 98, 18, 52, 86, 82, 96, 1, 96, 0, 82 }; // kall placeholder
+
+		// match and correct deployed code
+		auto deployedMatches = findMatches(
+			compiledContract.runtimeObject.bytecode,
+			kallPlaceholder
+		);
+		// cerr << "time to check this runtime bytecode!!: " << compiledContract.object.bytecode << endl;
+		cerr << "found " << deployedMatches.size() << " matches in deployed code at: ";// << matches.data() << endl;
+		for(unsigned int i=0; i < static_cast<unsigned int>(deployedMatches.size()); i++)
+		{
+			size_t matchIndex = deployedMatches.at(i);
+   			cerr << matchIndex << ", ";
+			copy(kallAsBytes.begin(), kallAsBytes.end(), compiledContract.runtimeObject.bytecode.begin() + static_cast<long>(matchIndex));
+		}
+		cerr << endl;
 	}
 	catch(evmasm::AssemblyException const&)
 	{

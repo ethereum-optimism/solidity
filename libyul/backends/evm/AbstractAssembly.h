@@ -115,9 +115,6 @@ public:
 
 	/// Mark this assembly as invalid. Any attempt to request bytecode from it should throw.
 	virtual void markAsInvalid() = 0;
-
-	// OVM Changes
-	virtual void appendRawCode(solidity::bytes _data) = 0;
 };
 
 enum class IdentifierContext { LValue, RValue, VariableDeclaration };

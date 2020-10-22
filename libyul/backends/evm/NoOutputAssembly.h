@@ -48,9 +48,6 @@ public:
 	explicit NoOutputAssembly(bool _evm15 = false): m_evm15(_evm15) { }
 	~NoOutputAssembly() override = default;
 
-	// OVM: Unimplemented for this class.
-	void appendRawCode(solidity::bytes _data) override;
-
 	void setSourceLocation(langutil::SourceLocation const&) override {}
 	int stackHeight() const override { return m_stackHeight; }
 	void setStackHeight(int height) override { m_stackHeight = height; }
