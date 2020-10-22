@@ -128,7 +128,7 @@ struct OpPop: SimplePeepholeOptimizerMethod<OpPop, 2>
 		if (
 			_pop == Instruction::POP && _op.type() == Operation
 			// OVM: do not optimize CALLER POP as this is how we identify safe 0x04 precompile call.
-			&& _op.instruction() != Instruction::CALLER
+			// && _op.instruction() != Instruction::CALLER
 		)
 		{
 			Instruction instr = _op.instruction();
