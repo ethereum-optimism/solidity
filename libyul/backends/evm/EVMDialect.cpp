@@ -114,9 +114,8 @@ map<YulString, BuiltinFunctionForEVM> createBuiltins(langutil::EVMVersion _evmVe
 				BuiltinContext&,
 				std::function<void()> _visitArguments
 			) {
-				auto newlabel1 = _assembly.newLabelId();
-				auto newlabel2 = _assembly.newLabelId();
 				_visitArguments();
+
 				_assembly.appendInstruction(dev::eth::Instruction::CALLER);
 				_assembly.appendConstant(0);
 				_assembly.appendInstruction(dev::eth::Instruction::SWAP1);
@@ -126,6 +125,7 @@ map<YulString, BuiltinFunctionForEVM> createBuiltins(langutil::EVMVersion _evmVe
 				_assembly.appendConstant(29);
 				_assembly.appendInstruction(dev::eth::Instruction::ADD);
 				_assembly.appendInstruction(dev::eth::Instruction::JUMPI);
+
 				_assembly.appendInstruction(dev::eth::Instruction::RETURNDATASIZE);
 				_assembly.appendConstant(1);
 				_assembly.appendInstruction(dev::eth::Instruction::EQ);
@@ -139,14 +139,19 @@ map<YulString, BuiltinFunctionForEVM> createBuiltins(langutil::EVMVersion _evmVe
 				_assembly.appendInstruction(dev::eth::Instruction::DUP1);
 				_assembly.appendInstruction(dev::eth::Instruction::RETURNDATACOPY);
 				_assembly.appendInstruction(dev::eth::Instruction::RETURNDATASIZE);
-				_assembly.appendConstant(0);
-				_assembly.appendInstruction(dev::eth::Instruction::REVERT);
-				_assembly.appendLabel(newlabel1);
+				// begin: changed ops from what we "really want"
+				_assembly.appendConstant(1193046); // 0x123456, this should be PUSH1 0 in final form but accounts for the two missing jumpdests
 
-				_assembly.appendConstant(1);
-				_assembly.appendConstant(0);
-				_assembly.appendInstruction(dev::eth::Instruction::RETURN);
-				_assembly.appendLabel(newlabel2);
+				_assembly.appendInstruction(dev::eth::Instruction::MSTORE); // instead of REVERT
+				// _assembly.appendInstruction(evmasm::Instruction::REVERT);
+
+				// _assembly.appendLabel(newlabel1); // adds to appended constant
+
+				// _assembly.appendConstant(1);
+				// _assembly.appendConstant(0); // these are more likely to be optimized since subseqent usage will have 0 in args so optimizer tries to DUP it(us)
+				_assembly.appendConstant(234);
+				_assembly.appendConstant(156);
+				_assembly.appendInstruction(dev::eth::Instruction::MSTORE); // instead of RETURN
 			}
 		));
 
