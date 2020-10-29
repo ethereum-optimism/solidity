@@ -174,6 +174,7 @@ bool CompilerContext::appendCallback(eth::AssemblyItem const& _i) {
 			case Instruction::COINBASE:
 			case Instruction::DIFFICULTY:
 			case Instruction::GASPRICE:
+			case Instruction::ORIGIN:
 			case Instruction::SELFBALANCE:
 			case Instruction::SELFDESTRUCT:
 				m_errorReporter.parserError(
@@ -206,9 +207,6 @@ bool CompilerContext::appendCallback(eth::AssemblyItem const& _i) {
 				break;
 			case Instruction::NUMBER:
 				simpleRewrite("ovmNUMBER()", 0, 1);
-				break;
-			case Instruction::ORIGIN:
-				simpleRewrite("ovmORIGIN()", 0, 1);
 				break;
 			case Instruction::SSTORE:
 				simpleRewrite("ovmSSTORE()", 2, 0);
