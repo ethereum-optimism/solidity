@@ -971,7 +971,7 @@ bool onlySafeExperimentalFeaturesActivated(set<ExperimentalFeature> const& featu
 }
 }
 
-// BEGIN OVM CHANGE
+// BEGIN OVM CHANGE: helper byte substring matching function
 std::vector<std::size_t> findMatches(const bytes haystack,
                                           const bytes needle)
 {
@@ -1026,25 +1026,31 @@ void CompilerStack::compileContract(
 		compiledContract.object = compiler->assembledObject();
 
 		// BEGIN: OVM CHANGES.  Replaces kall which does not get screwed by optimizer with kall we actually want.
-		bytes kallAsBytes{ 51, 96, 0, 144, 90, 241, 88, 96, 29, 1, 87, 61, 96, 1, 20, 88, 96, 12, 1, 87, 61, 96, 0, 128, 62, 61, 96, 0, 253, 91, 96, 1, 96, 0, 243, 91  }; // kall
 
-		bytes kallPlaceholder{ 51, 96, 0, 144, 90, 241, 88, 96, 29, 1, 87, 61, 96, 1, 20, 88, 96, 12, 1, 87, 61, 96, 0, 128, 62, 61, 98, 18, 52, 86, 82, 96, 234, 96, 156, 82 }; // kall placeholder
+		// the bytes that `kall` is assigned via EVMDialect.cpp
+		bytes kallPlaceholder{
+			0x33, 0x60, 0x00, 0x90, 0x5a, 0xf1, 0x58, 0x60, 0x1d, 0x01, 0x57, 0x3d, 0x60, 0x01, 0x14, 0x58, 0x60, 0x0c, 0x01, 0x57, 0x3d, 0x60, 0x00, 0x80, 0x3e, 0x3d, 0x62, 0x12, 0x34, 0x56, 0x52, 0x60, 0xea, 0x61, 0x10, 0x9c, 0x52			
+		};
+		
+		// The bytes that we really want kall to have
+		bytes kallAsBytes{
+			0x33, 0x60, 0x00, 0x90, 0x5a, 0xf1, 0x58, 0x60, 0x0e, 0x01, 0x57, 0x3d, 0x60, 0x00, 0x80, 0x3e, 0x3d, 0x60, 0x00, 0xfd, 0x5b, 0x3d, 0x60, 0x01, 0x14, 0x15, 0x58, 0x60, 0x0a, 0x01, 0x57, 0x60, 0x01, 0x60, 0x00, 0xf3, 0x5b
+		 };
 
-		// match and correct initcode
+		// find all instances of kall placeholder so we can insert kall instead
 		auto initcodeMatches = findMatches(
 			compiledContract.object.bytecode,
 			kallPlaceholder
 		);
 
-		cerr << "found " << initcodeMatches.size() << " matches in initcode at: ";// << matches.data() << endl;
+		// insert actually desired kall instead at the found matches
 		for(unsigned int i=0; i < static_cast<unsigned int>(initcodeMatches.size()); i++)
 		{
 			size_t matchIndex = initcodeMatches.at(i);
-   			cerr << matchIndex << ", ";
 			copy(kallAsBytes.begin(), kallAsBytes.end(), compiledContract.object.bytecode.begin() + static_cast<long>(matchIndex));
 		}
-		cerr << endl;
 		// END: OVM CHANGES
+
 	}
 	catch(eth::AssemblyException const&)
 	{
@@ -1055,27 +1061,6 @@ void CompilerStack::compileContract(
 	{
 		// Assemble runtime object.
 		compiledContract.runtimeObject = compiler->runtimeObject();
-
-		// BEGIN: OVM CHANGES.  Replaces kall which does not get screwed by optimizer with kall we actually want.
-		bytes kallAsBytes{ 51, 96, 0, 144, 90, 241, 88, 96, 29, 1, 87, 61, 96, 1, 20, 88, 96, 12, 1, 87, 61, 96, 0, 128, 62, 61, 96, 0, 253, 91, 96, 1, 96, 0, 243, 91  }; // kall
-
-		bytes kallPlaceholder{ 51, 96, 0, 144, 90, 241, 88, 96, 29, 1, 87, 61, 96, 1, 20, 88, 96, 12, 1, 87, 61, 96, 0, 128, 62, 61, 98, 18, 52, 86, 82, 96, 1, 96, 0, 82 }; // kall placeholder
-
-		// match and correct deployed code
-		auto deployedMatches = findMatches(
-			compiledContract.runtimeObject.bytecode,
-			kallPlaceholder
-		);
-		// cerr << "time to check this runtime bytecode!!: " << compiledContract.object.bytecode << endl;
-		cerr << "found " << deployedMatches.size() << " matches in deployed code at: ";// << matches.data() << endl;
-		for(unsigned int i=0; i < static_cast<unsigned int>(deployedMatches.size()); i++)
-		{
-			size_t matchIndex = deployedMatches.at(i);
-   			cerr << matchIndex << ", ";
-			copy(kallAsBytes.begin(), kallAsBytes.end(), compiledContract.runtimeObject.bytecode.begin() + static_cast<long>(matchIndex));
-		}
-		cerr << endl;
-		// END: OVM CHANGES
 	}
 	catch(eth::AssemblyException const&)
 	{

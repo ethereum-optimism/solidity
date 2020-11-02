@@ -139,18 +139,12 @@ map<YulString, BuiltinFunctionForEVM> createBuiltins(langutil::EVMVersion _evmVe
 				_assembly.appendInstruction(dev::eth::Instruction::DUP1);
 				_assembly.appendInstruction(dev::eth::Instruction::RETURNDATACOPY);
 				_assembly.appendInstruction(dev::eth::Instruction::RETURNDATASIZE);
-				// begin: changed ops from what we "really want"
+
+				// begin: changed ops from what we "really want".  Larger pushed values make sure the total bytes are equivalent while avoiding having jumpdests etc.
 				_assembly.appendConstant(1193046); // 0x123456, this should be PUSH1 0 in final form but accounts for the two missing jumpdests
-
 				_assembly.appendInstruction(dev::eth::Instruction::MSTORE); // instead of REVERT
-				// _assembly.appendInstruction(evmasm::Instruction::REVERT);
-
-				// _assembly.appendLabel(newlabel1); // adds to appended constant
-
-				// _assembly.appendConstant(1);
-				// _assembly.appendConstant(0); // these are more likely to be optimized since subseqent usage will have 0 in args so optimizer tries to DUP it(us)
-				_assembly.appendConstant(234);
-				_assembly.appendConstant(156);
+				_assembly.appendConstant(234); // in place of 1 because optimizer likes duping 1
+				_assembly.appendConstant(4252); // in place of 0 because optimizer likes duping 0
 				_assembly.appendInstruction(dev::eth::Instruction::MSTORE); // instead of RETURN
 			}
 		));
