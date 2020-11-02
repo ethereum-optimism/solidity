@@ -65,7 +65,7 @@ then
       echo "Not publishing, we already published this version."
       exit 0
     fi
-    FULLVERSION="$VER+commit.$COMMIT"
+    FULLVERSION="$VER+ovm+commit.$COMMIT"
 elif [ "$TRAVIS_BRANCH" = develop ]
 then
     # We only want one release per day and we do not want to push the same commit twice.
@@ -74,7 +74,7 @@ then
       echo "Not publishing, we already published this version today."
       exit 0
     fi
-    FULLVERSION="$VER-nightly.$DATE+commit.$COMMIT"
+    FULLVERSION="$VER-nightly.$DATE+ovm+commit.$COMMIT"
 else
     echo "Not publishing, wrong branch."
     exit 0
