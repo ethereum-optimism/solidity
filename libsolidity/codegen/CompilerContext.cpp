@@ -184,6 +184,14 @@ bool CompilerContext::appendCallback(eth::AssemblyItem const& _i) {
 		ret = true;  // will be set to false again if we don't change the instruction
 		switch (_i.instruction()) {
 			case Instruction::BALANCE:
+				m_errorReporter.parserError(
+					assemblyPtr()->getSourceLocation(),
+					"OVM: " +
+					instructionInfo(_i.instruction()).name +
+					" is not implemented in the OVM. (no native ETH)"
+				);
+				ret = false;
+				break;
 			case Instruction::BLOCKHASH:
 			case Instruction::CALLCODE:
 			case Instruction::COINBASE:
@@ -195,7 +203,7 @@ bool CompilerContext::appendCallback(eth::AssemblyItem const& _i) {
 					assemblyPtr()->getSourceLocation(),
 					"OVM: " +
 					instructionInfo(_i.instruction()).name +
-					" is a banned opcode"
+					" is not implemented in the OVM."
 				);
 				ret = false;
 				break;
