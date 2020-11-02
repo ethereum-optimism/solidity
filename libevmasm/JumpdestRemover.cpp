@@ -56,7 +56,6 @@ set<size_t> JumpdestRemover::referencedTags(AssemblyItems const& _items, size_t 
 {
 	set<size_t> ret;
 	for (auto const& item: _items)
-		auto item = _items[i];
 		if (item.type() == PushTag)
 		{
 			auto subAndTag = item.splitForeignPushTag();
