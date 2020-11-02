@@ -64,22 +64,6 @@ set<size_t> JumpdestRemover::referencedTags(AssemblyItems const& _items, size_t 
 			if (subAndTag.first == _subId)
 				ret.insert(subAndTag.second);
 		}
-		// BEGIN: OVM CHANGES.  Allows us to identify tags as referenced if they appear in PC PUSH ADD JUMP so they are not incorrectly removed.
-		// if (item.type() == Operation)
-		// {
-		// 	if (item.instruction() == dev::eth::Instruction::PC)
-		// 	{
-		// 		auto addedToPC = _items[i+1].data();
-		// 		// matched first PC in "safe" pattern
-		// 		if (addedToPC == 29)
-		// 		{
-		// 			auto firstJumpdestSubAndTag = _items[i+18].splitForeignPushTag();
-		// 			ret.insert(firstJumpdestSubAndTag.second);
-		// 			auto secondJumpdestSubAndTag = _items[i+22].splitForeignPushTag();
-		// 			ret.insert(secondJumpdestSubAndTag.second);
-		// 		}
-		// 	}
-		// }
 	}
 	return ret;
 }
