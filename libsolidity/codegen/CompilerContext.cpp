@@ -188,7 +188,7 @@ bool CompilerContext::appendCallback(eth::AssemblyItem const& _i) {
 					assemblyPtr()->getSourceLocation(),
 					"OVM: " +
 					instructionInfo(_i.instruction()).name +
-					" is not implemented in the OVM. (no native ETH)"
+					" is not implemented in the OVM. (We have no native ETH -- use deposited WETH instead!)"
 				);
 				ret = false;
 				break;

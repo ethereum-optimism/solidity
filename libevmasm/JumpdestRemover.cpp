@@ -55,8 +55,7 @@ bool JumpdestRemover::optimise(set<size_t> const& _tagsReferencedFromOutside)
 set<size_t> JumpdestRemover::referencedTags(AssemblyItems const& _items, size_t _subId)
 {
 	set<size_t> ret;
-	for(std::size_t i=0; i<_items.size(); ++i)
-	{
+	for (auto const& item: _items)
 		auto item = _items[i];
 		if (item.type() == PushTag)
 		{
@@ -64,6 +63,5 @@ set<size_t> JumpdestRemover::referencedTags(AssemblyItems const& _items, size_t 
 			if (subAndTag.first == _subId)
 				ret.insert(subAndTag.second);
 		}
-	}
 	return ret;
 }
