@@ -34,6 +34,7 @@ using namespace solidity::yul;
 using namespace solidity::util;
 using namespace solidity::langutil;
 
+
 void NoOutputAssembly::appendInstruction(evmasm::Instruction _instr)
 {
 	m_stackHeight += instructionInfo(_instr).ret - instructionInfo(_instr).args;

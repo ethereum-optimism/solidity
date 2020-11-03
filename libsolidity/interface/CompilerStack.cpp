@@ -72,8 +72,6 @@
 #include <boost/algorithm/string/replace.hpp>
 #include <utility>
 
-#include <iostream>
-
 using namespace std;
 using namespace solidity;
 using namespace solidity::langutil;

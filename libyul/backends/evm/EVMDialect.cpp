@@ -35,8 +35,6 @@
 
 #include <boost/range/adaptor/reversed.hpp>
 
-#include <iostream>
-
 using namespace std;
 using namespace solidity;
 using namespace solidity::yul;
@@ -113,15 +111,6 @@ pair<YulString, BuiltinFunctionForEVM> createFunction(
 	f.generateCode = std::move(_generateCode);
 	return {name, f};
 }
-
-// long genRandomPush(uint _ofSize)
-// {
-// 	string randomHexMaxLength = "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
-// 	string randomHexRightLength = randomHexMaxLength.substr(0, 2*_ofSize);
-// 	auto theDecimal = solidity::util::fromHex(randomHexRightLength);
-// 	cerr << "Generated random string of length " << _ofSize << " as " << randomHexRightLength << "which as decimal is" << theDecimal << endl;
-// 	return theDecimal;
-// }
 
 map<YulString, BuiltinFunctionForEVM> createBuiltins(langutil::EVMVersion _evmVersion, bool _objectAccess)
 {

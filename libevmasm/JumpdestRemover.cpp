@@ -24,8 +24,6 @@
 
 #include <libevmasm/AssemblyItem.h>
 
-#include <iostream>
-
 using namespace std;
 using namespace solidity;
 using namespace solidity::util;
@@ -48,13 +46,10 @@ bool JumpdestRemover::optimise(set<size_t> const& _tagsReferencedFromOutside)
 			auto asmIdAndTag = _item.splitForeignPushTag();
 			assertThrow(asmIdAndTag.first == numeric_limits<size_t>::max(), OptimizerException, "Sub-assembly tag used as label.");
 			size_t tag = asmIdAndTag.second;
-			// cerr << "!references.count(tag) for tag " << tag << " is: " << !references.count(tag) << endl;
 			return !references.count(tag);
 		}
 	);
-	// cerr << "erasing some unused jumpdests (from " << pend.base(). << "to " << m_items.end().base()->tag() << endl;
 	m_items.erase(pend, m_items.end());
-	
 	return m_items.size() != initialSize;
 }
 
@@ -62,41 +57,12 @@ set<size_t> JumpdestRemover::referencedTags(AssemblyItems const& _items, size_t 
 {
 	set<size_t> ret;
 
-	for(std::size_t i=0; i<_items.size(); ++i)  
-	// for (auto const& item: _items)
-	{
-		auto item = _items[i];
+	for (auto const& item: _items)
 		if (item.type() == PushTag)
 		{
 			auto subAndTag = item.splitForeignPushTag();
 			if (subAndTag.first == _subId)
 				ret.insert(subAndTag.second);
 		}
-		// // BEGIN: OVM CHANGES.  Allows us to identify tags as referenced if they appear in PC PUSH ADD JUMP so they are not incorrectly removed.
-		// if (item.type() == Operation)
-		// {
-		// 	if (item.instruction() == solidity::evmasm::Instruction::PC)
-		// 	{
-		// 		auto addedToPC = _items[i+1].data();
-		// 		// matched first PC in "safe" pattern
-		// 		if (addedToPC == 29)
-		// 		{
-		// 			// cerr << "found first PC in kall(), the tagged jumpdests are: ";
-		// 			// cerr << "found PC with data of next item of " << addedToPC << endl;
-		// 			// cerr << "the 22nd item after this is: " << _items[i+22];
-		// 			// todo: renmame thewse bad boyz
-		// 			auto firstJumpdestSubAndTag = _items[i+18].splitForeignPushTag();
-		// 			ret.insert(firstJumpdestSubAndTag.second);
-		// 			auto secondJumpdestSubAndTag = _items[i+22].splitForeignPushTag();
-		// 			ret.insert(secondJumpdestSubAndTag.second);
-		// 			// cerr << "the next few opcodes are: ";
-		// 			// for(size_t j=0; j < 30; ++j) {
-		// 			// 	cerr << _items[i+j];
-		// 			// }				
-		// 			// cerr << endl << " and the opcode at that offset is" << _items[i+addedToPC.convert_to<size_t>()] << endl;
-		// 		}
-		// 	}
-		// }
-	}
 	return ret;
 }

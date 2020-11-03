@@ -38,6 +38,7 @@ size_t constexpr labelReferenceSize = 4;
 size_t constexpr assemblySizeReferenceSize = 4;
 }
 
+
 void EVMAssembly::setSourceLocation(SourceLocation const&)
 {
 	// Ignored for now;

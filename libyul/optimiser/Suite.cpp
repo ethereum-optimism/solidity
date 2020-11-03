@@ -75,8 +75,6 @@ using namespace std;
 using namespace solidity;
 using namespace solidity::yul;
 
-#include <iostream>
-
 void OptimiserSuite::run(
 	Dialect const& _dialect,
 	GasMeter const* _meter,
