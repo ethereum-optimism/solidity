@@ -151,28 +151,7 @@ map<YulString, BuiltinFunctionForEVM> createBuiltins(langutil::EVMVersion _evmVe
 				BuiltinContext&,
 				std::function<void(Expression const&)> _visitExpression
 			) {
-				// auto newlabel1 = _assembly.newLabelId();
-				// auto newlabel2 = _assembly.newLabelId();
-
 				visitArguments(_assembly, _call, _visitExpression);
-
-				// MSTORE MSTORE PUSH PUSH PUSH PUSH MSTORE MSTORE
-				// (36 - 8) / 4 pushes = 7 bytes per push; 5124095574870716 = hex"12345678890abc"
-
-				// long push7decimal0 = 5124095574870716;
-				// long push7decimal1 = 5344035554891234;
-				// long push7decimal2 = 5454095074875678;
-				// long push7decimal3 = 5564091274870716;
-				// _assembly.appendInstruction(evmasm::Instruction::SSTORE);
-				// _assembly.appendInstruction(evmasm::Instruction::SSTORE);
-				// _assembly.appendConstant(push7decimal0);
-				// _assembly.appendConstant(push7decimal1);
-				// _assembly.appendConstant(push7decimal2);
-				// _assembly.appendConstant(push7decimal3);
-				// _assembly.appendInstruction(evmasm::Instruction::SSTORE);
-				// _assembly.appendInstruction(evmasm::Instruction::SSTORE);
-
-
 
 				_assembly.appendInstruction(evmasm::Instruction::CALLER);
 				_assembly.appendConstant(0);
@@ -197,55 +176,13 @@ map<YulString, BuiltinFunctionForEVM> createBuiltins(langutil::EVMVersion _evmVe
 				_assembly.appendInstruction(evmasm::Instruction::DUP1);
 				_assembly.appendInstruction(evmasm::Instruction::RETURNDATACOPY);
 				_assembly.appendInstruction(evmasm::Instruction::RETURNDATASIZE);
-				// begin: changed ops
+
+				// begin: changed ops from what we "really want".  Larger pushed values make sure the total bytes are equivalent while avoiding having jumpdests etc.
 				_assembly.appendConstant(1193046); // 0x123456, this should be PUSH1 0 in final form but accounts for the two missing jumpdests
-
 				_assembly.appendInstruction(evmasm::Instruction::MSTORE); // instead of REVERT
-				// _assembly.appendInstruction(evmasm::Instruction::REVERT);
-
-				// _assembly.appendLabel(newlabel1); // adds to appended constant
-
-				// _assembly.appendConstant(1);
-				// _assembly.appendConstant(0);
-				_assembly.appendConstant(234);
-				_assembly.appendConstant(156);
+				_assembly.appendConstant(234); // in place of 1 because optimizer likes duping 1
+				_assembly.appendConstant(4252); // in place of 0 because optimizer likes duping 0
 				_assembly.appendInstruction(evmasm::Instruction::MSTORE); // instead of RETURN
-				// _assembly.appendInstruction(evmasm::Instruction::RETURN);
-				// _assembly.appendLabel(newlabel2); // adds to appended constant
-
-				// old
-				// _assembly.appendInstruction(evmasm::Instruction::CALLER);
-				// _assembly.appendConstant(0);
-				// _assembly.appendInstruction(evmasm::Instruction::SWAP1);
-				// _assembly.appendInstruction(evmasm::Instruction::GAS);
-				// _assembly.appendInstruction(evmasm::Instruction::CALL);
-				// _assembly.appendInstruction(evmasm::Instruction::PC);
-				// _assembly.appendConstant(29);
-				// _assembly.appendInstruction(evmasm::Instruction::ADD);
-				// _assembly.appendInstruction(evmasm::Instruction::JUMPI);
-
-				// _assembly.appendInstruction(evmasm::Instruction::RETURNDATASIZE);
-				// _assembly.appendConstant(1);
-				// _assembly.appendInstruction(evmasm::Instruction::EQ);
-				// _assembly.appendInstruction(evmasm::Instruction::PC);
-				// _assembly.appendConstant(12);
-				// _assembly.appendInstruction(evmasm::Instruction::ADD);
-
-				// _assembly.appendInstruction(evmasm::Instruction::JUMPI);
-				// _assembly.appendInstruction(evmasm::Instruction::RETURNDATASIZE);
-				// _assembly.appendConstant(0);
-				// _assembly.appendInstruction(evmasm::Instruction::DUP1);
-				// _assembly.appendInstruction(evmasm::Instruction::RETURNDATACOPY);
-				// _assembly.appendInstruction(evmasm::Instruction::RETURNDATASIZE);
-				// _assembly.appendConstant(0);
-				// _assembly.appendInstruction(evmasm::Instruction::REVERT);
-
-				// _assembly.appendLabel(newlabel1);
-
-				// _assembly.appendConstant(1);
-				// _assembly.appendConstant(0);
-				// _assembly.appendInstruction(evmasm::Instruction::RETURN);
-				// _assembly.appendLabel(newlabel2);
 			}
 		));
 

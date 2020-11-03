@@ -109,11 +109,14 @@ void CompilerContext::simpleRewrite(string function, int _in, int _out, bool opt
 	auto asm_code = Whiskers(R"(
 		<input1>
 		<input2>
+
 		// overwrite call params
 		kall(callBytes, <in_size>, callBytes, <out_size>)
+
 		<output>
+
 		// overwrite the memory we used back to zero so that it does not mess with downstream use of memory (e.g. bytes memory)
-		// need to make larger than 0x40 if we ever use this for inputs exceeding 32*3 bytes in length
+		// need to make larger than 0x40 if we ever use this for inputs exceeding 32*2 bytes in length
 		for { let ptr := 0 } lt(ptr, 0x40) { ptr := add(ptr, 0x20) } {
 			mstore(add(callBytes, ptr), 0)
 		}
@@ -133,7 +136,6 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 	m_disable_rewrite = true;
 
 	auto callYUL = R"(
-
 		// store _gasLimit
 		mstore(add(callBytes, 0x04), in_gas)
 		// store _address
@@ -152,24 +154,20 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 		// kall, only grabbing 3 words of returndata (success & abi encoding stuff) and just throw on top of where we put it
 		// 104 is overkill, done to ensure sufficient right padding for abi encoding
 		kall(callBytes, add(0x104, argsLength), callBytes, 0x60)
-
 		// get _success
 		let wasSuccess := mload(callBytes)
-
 		// get abi length of _data output by EM
 		let returnedDataLengthFromABI := mload(add(callBytes, 0x40))
-		
+
 		// call identity precompile with ALL raw returndata (ignores bool and abi) to make returndatasize() correct.
 		// also copies the relevant data back to the CALL's intended vals (retOffset, retLength)
 		returndatacopy(callBytes, 0, returndatasize())
 		kopy(add(callBytes, 0x60), returnedDataLengthFromABI, retOffset, retLength)
-
 		// remove all the stuff we did at callbytes
 		let newMemSize := msize()
 		for { let ptr := callBytes } lt(ptr, newMemSize) { ptr := add(ptr, 0x20) } {
 			mstore(ptr, 0x00)
 		}
-
 		// set the first stack element out, this looks weird but it's really saying this is the intended stack output of the replaced EVM operation
 		retLength := wasSuccess
 	})"; 
@@ -188,6 +186,33 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 	if (_i.type() == Operation) {
 		ret = true;  // will be set to false again if we don't change the instruction
 		switch (_i.instruction()) {
+			case Instruction::BALANCE:
+				m_errorReporter.parserError(
+					0000_error,
+					assemblyPtr()->currentSourceLocation(),
+					"OVM: " +
+					instructionInfo(_i.instruction()).name +
+					" is not implemented in the OVM. (We have no native ETH -- use deposited WETH instead!)"
+				);
+				ret = false;
+				break;
+			case Instruction::BLOCKHASH:
+			case Instruction::CALLCODE:
+			case Instruction::COINBASE:
+			case Instruction::DIFFICULTY:
+			case Instruction::GASPRICE:
+			case Instruction::ORIGIN:
+			case Instruction::SELFBALANCE:
+			case Instruction::SELFDESTRUCT:
+				m_errorReporter.parserError(
+					0000_error,
+					assemblyPtr()->currentSourceLocation(),
+					"OVM: " +
+					instructionInfo(_i.instruction()).name +
+					" is not implemented in the OVM."
+				);
+				ret = false;
+				break;
 			case Instruction::SSTORE:
 				simpleRewrite("ovmSSTORE(bytes32,bytes32)", 2, 0);
 				break;
@@ -219,9 +244,6 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 				break;
 			case Instruction::GASLIMIT:
 				simpleRewrite("ovmGASLIMIT()", 0, 1);
-				break;
-			case Instruction::ORIGIN:
-				simpleRewrite("ovmORIGIN()", 0, 1);
 				break;
 			case Instruction::CALL:
 				complexRewrite("ovmCALL(uint256,address,bytes)", 7, 1, callYUL,
