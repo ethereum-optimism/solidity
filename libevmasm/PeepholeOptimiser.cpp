@@ -127,7 +127,11 @@ struct OpPop: SimplePeepholeOptimizerMethod<OpPop, 2>
 	)
 	{
 		
-		if (_pop == Instruction::POP && _op.type() == Operation)
+		if (
+			_pop == Instruction::POP && _op.type() == Operation
+			// OVM: do not optimize CALLER POP as this is how we identify safe call to 0x04 precompile. ("kopy" in EVMDialect)
+			&& _op.instruction() != Instruction::CALLER
+		)
 		{
 			Instruction instr = _op.instruction();
 			if (instructionInfo(instr).ret == 1 && !instructionInfo(instr).sideEffects)
