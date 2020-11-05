@@ -232,15 +232,6 @@ bool CompilerContext::appendCallback(eth::AssemblyItem const& _i) {
 				simpleRewrite("ovmNUMBER()", 0, 1);
 				break;
 			case Instruction::SSTORE:
-				simpleRewrite("ovmSSTORE()", 2, 0);
-				break;
-			case Instruction::SLOAD:
-				simpleRewrite("ovmSLOAD()", 1, 1);
-				break;
-			case Instruction::TIMESTAMP:
-				simpleRewrite("ovmTIMESTAMP()", 0, 1);
-				break;
-			case Instruction::SSTORE:
 				simpleRewrite("ovmSSTORE(bytes32,bytes32)", 2, 0);
 				break;
 			case Instruction::SLOAD:
