@@ -295,7 +295,7 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 						// remove all the stuff we did at callbytes.
 						let newMemSize := msize()
 						for { let ptr := callBytes } lt(ptr, newMemSize) { ptr := add(ptr, 0x20) } {
-							mstore(add(callBytes, ptr), 0x00)
+							mstore(ptr, 0x00)
 						}
 					})",
 					{"length", "offset", "value"});
@@ -322,7 +322,7 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 						// remove all the stuff we did at callbytes.
 						let newMemSize := msize()
 						for { let ptr := callBytes } lt(ptr, newMemSize) { ptr := add(ptr, 0x20) } {
-							mstore(add(callBytes, ptr), 0x00)
+							mstore(ptr, 0x00)
 						}
 					})",
 					{"salt", "length", "offset", "value"});
