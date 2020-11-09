@@ -147,11 +147,9 @@ bool CompilerContext::appendCallback(eth::AssemblyItem const& _i) {
 		for { let ptr := 0 } lt(ptr, argsLength) { ptr := add(ptr, 0x20) } {
 			mstore(add(rawCallBytes, ptr), mload(add(argsOffset, ptr)))
 		}
-		// we will return to where the calldata ends.  Overpadded to ensure that we do sufficient trailing zeros for ABI encoding
-		let endOfArgs := add(callBytes, add(0x104, argsLength))
-		// kall, only grabbing 3 words of returndata (success & abi encoding stuff) and just throw on top of where we put it
-		// 104 is overkill, done to ensure sufficient right padding for abi encoding
-		kall(callBytes, add(0x104, argsLength), callBytes, 0x60)
+		// kall, only grabbing 3 words of returndata (success & abi encoding stuff) and just throw on top of where we put it (successfull kall will awlays return >= 0x60 bytes)
+		// pad calldata by a word to ensure sufficient right 0-padding for abi encoding
+		kall(callBytes, add(0x20, argsLength), callBytes, 0x60)
 		// get _success
 		let wasSuccess := mload(callBytes)
 		// get abi length of _data output by EM
