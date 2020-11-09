@@ -138,7 +138,7 @@ bool CompilerContext::appendCallback(eth::AssemblyItem const& _i) {
 		mstore(add(callBytes, 0x04), in_gas)
 		// store _address
 		mstore(add(callBytes, 0x24), addr)
-		// store abi byte memory offset bullshit
+		// store abi byte memory offset
 		mstore(add(callBytes, 0x44), 0x60)
 		// store bytes memory _calldata.length
 		mstore(add(callBytes, 0x64), argsLength)
