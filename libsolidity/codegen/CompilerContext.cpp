@@ -186,6 +186,7 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 	if (_i.type() == Operation) {
 		ret = true;  // will be set to false again if we don't change the instruction
 		switch (_i.instruction()) {
+			case Instruction::SELFBALANCE:
 			case Instruction::BALANCE:
 				m_errorReporter.parserError(
 					1633_error,
@@ -202,7 +203,6 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 			case Instruction::DIFFICULTY:
 			case Instruction::GASPRICE:
 			case Instruction::ORIGIN:
-			case Instruction::SELFBALANCE:
 			case Instruction::SELFDESTRUCT:
 				m_errorReporter.parserError(
 					6388_error,
