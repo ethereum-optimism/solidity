@@ -33,7 +33,7 @@ if (("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU") OR ("${CMAKE_CXX_COMPILER_ID}" MA
 	# to fix warnings as they arise, so they don't accumulate "to be fixed later".
 	add_compile_options(-Wall)
 	add_compile_options(-Wextra)
-	add_compile_options(-Werror)
+	# add_compile_options(-Werror)
 
 	# Configuration-specific compiler settings.
 	set(CMAKE_CXX_FLAGS_DEBUG          "-O0 -g3 -DETH_DEBUG")

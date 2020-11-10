@@ -105,7 +105,54 @@ map<YulString, BuiltinFunctionForEVM> createBuiltins(langutil::EVMVersion _evmVe
 	builtins.emplace(createFunction(
 			"kall",
 			4,
-			1,
+			0,
+			SideEffects{false, false, false, false, true},
+			false,
+			[](
+				FunctionCall const&,
+				AbstractAssembly& _assembly,
+				BuiltinContext&,
+				std::function<void()> _visitArguments
+			) {
+				_visitArguments();
+
+				_assembly.appendInstruction(dev::eth::Instruction::CALLER);
+				_assembly.appendConstant(0);
+				_assembly.appendInstruction(dev::eth::Instruction::SWAP1);
+				_assembly.appendInstruction(dev::eth::Instruction::GAS);
+				_assembly.appendInstruction(dev::eth::Instruction::CALL);
+				_assembly.appendInstruction(dev::eth::Instruction::PC);
+				_assembly.appendConstant(29);
+				_assembly.appendInstruction(dev::eth::Instruction::ADD);
+				_assembly.appendInstruction(dev::eth::Instruction::JUMPI);
+
+				_assembly.appendInstruction(dev::eth::Instruction::RETURNDATASIZE);
+				_assembly.appendConstant(1);
+				_assembly.appendInstruction(dev::eth::Instruction::EQ);
+				_assembly.appendInstruction(dev::eth::Instruction::PC);
+				_assembly.appendConstant(12);
+				_assembly.appendInstruction(dev::eth::Instruction::ADD);
+
+				_assembly.appendInstruction(dev::eth::Instruction::JUMPI);
+				_assembly.appendInstruction(dev::eth::Instruction::RETURNDATASIZE);
+				_assembly.appendConstant(0);
+				_assembly.appendInstruction(dev::eth::Instruction::DUP1);
+				_assembly.appendInstruction(dev::eth::Instruction::RETURNDATACOPY);
+				_assembly.appendInstruction(dev::eth::Instruction::RETURNDATASIZE);
+
+				// begin: changed ops from what we "really want".  Larger pushed values make sure the total bytes are equivalent while avoiding having jumpdests etc.
+				_assembly.appendConstant(1193046); // 0x123456, this should be PUSH1 0 in final form but accounts for the two missing jumpdests
+				_assembly.appendInstruction(dev::eth::Instruction::MSTORE); // instead of REVERT
+				_assembly.appendConstant(234); // in place of 1 because optimizer likes duping 1
+				_assembly.appendConstant(4252); // in place of 0 because optimizer likes duping 0
+				_assembly.appendInstruction(dev::eth::Instruction::MSTORE); // instead of RETURN
+			}
+		));
+
+		builtins.emplace(createFunction(
+			"kopy",
+			4,
+			0,
 			SideEffects{false, false, false, false, true},
 			false,
 			[](
@@ -116,10 +163,12 @@ map<YulString, BuiltinFunctionForEVM> createBuiltins(langutil::EVMVersion _evmVe
 			) {
 				_visitArguments();
 				_assembly.appendInstruction(dev::eth::Instruction::CALLER);
+				_assembly.appendInstruction(dev::eth::Instruction::POP);
 				_assembly.appendConstant(0);
-				_assembly.appendInstruction(dev::eth::Instruction::SWAP1);
+				_assembly.appendConstant(4);
 				_assembly.appendInstruction(dev::eth::Instruction::GAS);
 				_assembly.appendInstruction(dev::eth::Instruction::CALL);
+				_assembly.appendInstruction(dev::eth::Instruction::POP);
 			}
 		));
 
