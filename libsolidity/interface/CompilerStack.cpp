@@ -1034,6 +1034,21 @@ bool onlySafeExperimentalFeaturesActivated(set<ExperimentalFeature> const& featu
 }
 }
 
+// BEGIN OVM CHANGE: helper byte substring matching function
+std::vector<std::size_t> findMatches(const bytes haystack,
+                                          const bytes needle)
+{
+    std::vector<std::size_t> indexes{};
+    auto it{haystack.begin()};
+    while ((it = std::search(it, haystack.end(), needle.begin(), needle.end())) != haystack.end())
+	{
+		auto dist = std::distance(haystack.begin(), it++);
+        indexes.push_back(static_cast<unsigned long>(dist));
+	}
+    return indexes;
+}
+// END OVM CHANGE
+
 void CompilerStack::compileContract(
 	ContractDefinition const& _contract,
 	map<ContractDefinition const*, shared_ptr<Compiler const>>& _otherCompilers
@@ -1072,6 +1087,33 @@ void CompilerStack::compileContract(
 	{
 		// Assemble deployment (incl. runtime)  object.
 		compiledContract.object = compiler->assembledObject();
+
+		// BEGIN: OVM CHANGES.  Replaces kall which does not get screwed by optimizer with kall we actually want.
+
+		// the bytes that `kall` is assigned via EVMDialect.cpp
+		bytes kallPlaceholder{
+			0x33, 0x60, 0x00, 0x90, 0x5a, 0xf1, 0x58, 0x60, 0x1d, 0x01, 0x57, 0x3d, 0x60, 0x01, 0x14, 0x58, 0x60, 0x0c, 0x01, 0x57, 0x3d, 0x60, 0x00, 0x80, 0x3e, 0x3d, 0x62, 0x12, 0x34, 0x56, 0x52, 0x60, 0xea, 0x61, 0x10, 0x9c, 0x52			
+		};
+		
+		// The bytes that we really want kall to have
+		bytes kallAsBytes{
+			0x33, 0x60, 0x00, 0x90, 0x5a, 0xf1, 0x58, 0x60, 0x0e, 0x01, 0x57, 0x3d, 0x60, 0x00, 0x80, 0x3e, 0x3d, 0x60, 0x00, 0xfd, 0x5b, 0x3d, 0x60, 0x01, 0x14, 0x15, 0x58, 0x60, 0x0a, 0x01, 0x57, 0x60, 0x01, 0x60, 0x00, 0xf3, 0x5b
+		 };
+
+		// find all instances of kall placeholder so we can insert kall instead
+		auto initcodeMatches = findMatches(
+			compiledContract.object.bytecode,
+			kallPlaceholder
+		);
+
+		// insert actually desired kall instead at the found matches
+		for(unsigned int i=0; i < static_cast<unsigned int>(initcodeMatches.size()); i++)
+		{
+			size_t matchIndex = initcodeMatches.at(i);
+			copy(kallAsBytes.begin(), kallAsBytes.end(), compiledContract.object.bytecode.begin() + static_cast<long>(matchIndex));
+		}
+		// END: OVM CHANGES
+
 	}
 	catch(evmasm::AssemblyException const&)
 	{
