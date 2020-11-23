@@ -181,7 +181,7 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 		}
 		// set the first stack element out, this looks weird but it's really saying this is the intended stack output of the replaced EVM operation
 		retLength := wasSuccess
-	})";
+	})"; 
 
 	if (_i.type() == PushData) {
 		auto dat = assemblyPtr()->data(_i.data());
