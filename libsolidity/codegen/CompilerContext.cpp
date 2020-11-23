@@ -136,6 +136,16 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 	m_disable_rewrite = true;
 
 	auto callYUL = R"(
+		// declare helper functions
+		function max(first, second) -> bigger {
+			bigger := first
+			if gt(second, first) { bigger := second }
+		}
+		function min(first, second) -> smaller {
+			smaller := first
+			if lt(second, first) { smaller := second }
+		}
+
 		// store _gasLimit
 		mstore(add(callBytes, 0x04), in_gas)
 		// store _address
@@ -163,12 +173,15 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 		kopy(add(callBytes, 0x60), returnedDataLengthFromABI, retOffset, retLength)
 		// remove all the stuff we did at callbytes
 		let newMemSize := msize()
-		for { let ptr := callBytes } lt(ptr, newMemSize) { ptr := add(ptr, 0x20) } {
+
+		// overwrite zeros starting from either the pre-modification msize, or the end of returndata (whichever is bigger)
+		let endOfReturnData := add(retOffset,min(returndatasize(), retLength))
+		for { let ptr := max(callBytes, endOfReturnData) } lt(ptr, newMemSize) { ptr := add(ptr, 0x20) } {
 			mstore(ptr, 0x00)
 		}
 		// set the first stack element out, this looks weird but it's really saying this is the intended stack output of the replaced EVM operation
 		retLength := wasSuccess
-	})"; 
+	})";
 
 	if (_i.type() == PushData) {
 		auto dat = assemblyPtr()->data(_i.data());
@@ -331,6 +344,12 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 						mstore(add(callBytes, 0x24), offset)
 						mstore(add(callBytes, 0x44), length)
 						kall(callBytes, 0x64, destOffset, length)
+						
+						// remove all the stuff we did at callbytes, except for any part of the copied code itself which extended past callbytes.
+						let newMemSize := msize()
+						for { let ptr := max(callBytes, add(destOffset, length)) } lt(ptr, newMemSize) { ptr := add(ptr, 0x20) } {
+							mstore(ptr, 0x00)
+						}
 					})",
 					{"length", "offset", "destOffset", "addr"});
 				break;
