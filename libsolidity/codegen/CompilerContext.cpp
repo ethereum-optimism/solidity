@@ -171,6 +171,8 @@ bool CompilerContext::appendCallback(eth::AssemblyItem const& _i) {
 		returndatacopy(callBytes, 0, returndatasize())
 		kopy(add(callBytes, 0x60), returnedDataLengthFromABI, retOffset, retLength)
 
+		// remove all the stuff we did at callbytes
+		let newMemSize := msize()
 		// overwrite zeros starting from either the pre-modification msize, or the end of returndata (whichever is bigger)
 		let endOfReturnData := add(retOffset,min(returndatasize(), retLength))
 		for { let ptr := max(callBytes, endOfReturnData) } lt(ptr, newMemSize) { ptr := add(ptr, 0x20) } {
