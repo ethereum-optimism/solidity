@@ -46,6 +46,11 @@
 #include <queue>
 #include <utility>
 
+namespace langutil
+{
+class ErrorReporter;
+}
+
 namespace solidity::frontend {
 
 class Compiler;
@@ -60,6 +65,7 @@ public:
 	explicit CompilerContext(
 		langutil::EVMVersion _evmVersion,
 		RevertStrings _revertStrings,
+		langutil::ErrorReporter& _errorReporter,
 		CompilerContext* _runtimeContext = nullptr
 	):
 		m_asm(std::make_shared<evmasm::Assembly>()),
@@ -68,10 +74,14 @@ public:
 		m_reservedMemory{0},
 		m_runtimeContext(_runtimeContext),
 		m_abiFunctions(m_evmVersion, m_revertStrings, m_yulFunctionCollector),
-		m_yulUtilFunctions(m_evmVersion, m_revertStrings, m_yulFunctionCollector)
+		m_yulUtilFunctions(m_evmVersion, m_revertStrings, m_yulFunctionCollector),
+		m_errorReporter(_errorReporter)
 	{
 		if (m_runtimeContext)
 			m_runtimeSub = size_t(m_asm->newSub(m_runtimeContext->m_asm).data());
+
+		// OVM change: add append callback
+		m_asm->setAppendCallback(std::bind(&CompilerContext::appendCallback, this, std::placeholders::_1));
 	}
 
 	langutil::EVMVersion const& evmVersion() const { return m_evmVersion; }
@@ -301,6 +311,14 @@ public:
 
 	RevertStrings revertStrings() const { return m_revertStrings; }
 
+	/// Functions for rewriting opcodes to OVM
+	void complexRewrite(std::string function, int _in, int _out,
+		std::string code, std::vector<std::string> const& _localVariables, bool optimize);
+	void simpleRewrite(std::string function, int _in, int _out, bool optimize);
+	bool appendCallback(evmasm::AssemblyItem const& _i);
+	bool m_disable_rewrite = false;
+	bool m_is_building_user_asm = false;
+
 private:
 	/// Updates source location set in the assembly.
 	void updateSourceLocation();
@@ -384,6 +402,8 @@ private:
 	std::queue<std::tuple<std::string, unsigned, unsigned, std::function<void(CompilerContext&)>>> m_lowLevelFunctionGenerationQueue;
 	/// Flag to check that appendYulUtilityFunctions() was called exactly once
 	bool m_appendYulUtilityFunctionsRan = false;
+
+	langutil::ErrorReporter& m_errorReporter;
 };
 
 }

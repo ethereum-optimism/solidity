@@ -63,6 +63,308 @@ using namespace solidity::evmasm;
 using namespace solidity::frontend;
 using namespace solidity::langutil;
 
+void CompilerContext::complexRewrite(string function, int _in, int _out,
+	string code, vector<string> const& _localVariables, bool optimize=true) {
+
+	auto methodId = FixedHash<4>(util::keccak256(function)).hex();
+
+	auto asm_code = Whiskers(R"({
+		let methodId := 0x<methodId>
+		// needed to fix synthetix
+		let callBytes := msize()
+		// replace the first 4 bytes with the right methodID
+		mstore(callBytes, shl(224, methodId))
+	)")("methodId", methodId).render();
+
+	//cerr << "rewriting " << function << endl;
+
+	for (int i = 0; i < _out-_in; i++) {
+		// add padding to the stack, the value doesn't matter
+		assemblyPtr()->append(Instruction::GAS);
+	}
+
+	if (optimize) {
+		callLowLevelFunction(function, 0, 0,
+			[asm_code, code, _localVariables](CompilerContext& _context) {
+				vector<string> lv = _localVariables;
+				lv.push_back("ret");
+				_context.m_disable_rewrite = true;
+				_context.appendInlineAssembly(asm_code+code, lv);
+				_context.m_disable_rewrite = false;
+			}
+		);
+	} else {
+		appendInlineAssembly(asm_code+code, _localVariables);
+	}
+
+	for (int i = 0; i < _in-_out; i++) {
+		assemblyPtr()->append(Instruction::POP);
+	}
+}
+
+void CompilerContext::simpleRewrite(string function, int _in, int _out, bool optimize=true) {
+	assert(_in <= 2);
+	assert(_out <= 1);
+
+	auto asm_code = Whiskers(R"(
+		<input1>
+		<input2>
+		// overwrite call params
+		kall(callBytes, <in_size>, callBytes, <out_size>)
+		<output>
+		// overwrite the memory we used back to zero so that it does not mess with downstream use of memory (e.g. bytes memory)
+		// need to make larger than 0x40 if we ever use this for inputs exceeding 32*2 bytes in length
+		for { let ptr := 0 } lt(ptr, 0x40) { ptr := add(ptr, 0x20) } {
+			mstore(add(callBytes, ptr), 0)
+		}
+	})");
+	asm_code("in_size", to_string(_in*0x20+4));
+	asm_code("out_size", to_string(_out*0x20));
+
+	asm_code("input1", (_in >= 1) ? "mstore(add(callBytes, 4), x1)" : "");
+	asm_code("input2", (_in >= 2) ? "mstore(add(callBytes, 0x24), x2)" : "");
+	asm_code("output", (_out > 0) ? "x1 := mload(callBytes)" : "");
+
+	complexRewrite(function, _in, _out, asm_code.render(), {"x2", "x1"}, optimize);
+}
+
+bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
+	if (m_disable_rewrite) return false;
+	m_disable_rewrite = true;
+
+	auto callYUL = R"(
+		// declare helper functions
+		function max(first, second) -> bigger {
+			bigger := first
+			if gt(second, first) { bigger := second }
+		}
+		function min(first, second) -> smaller {
+			smaller := first
+			if lt(second, first) { smaller := second }
+		}
+		// store _gasLimit
+		mstore(add(callBytes, 0x04), in_gas)
+		// store _address
+		mstore(add(callBytes, 0x24), addr)
+		// store abi bytes memory offset
+		mstore(add(callBytes, 0x44), 0x60)
+		// store bytes memory _calldata.length
+		mstore(add(callBytes, 0x64), argsLength)
+		// store bytes memory _calldata raw data
+		let rawCallBytes := add(callBytes, 0x84)
+		for { let ptr := 0 } lt(ptr, argsLength) { ptr := add(ptr, 0x20) } {
+			mstore(add(rawCallBytes, ptr), mload(add(argsOffset, ptr)))
+		}
+		// kall, only grabbing 3 words of returndata (success & abi encoding params) and just throw on top of where we put it (successfull kall will awlays return >= 0x60 bytes)
+		// overpad calldata by a word (argsLen [raw data] + 0x84 [abi prefixing] + 0x20 [1 word max to pad] = argsLen + 0xa4) to ensure sufficient right 0-padding for abi encoding
+		kall(callBytes, add(0xa4, argsLength), callBytes, 0x60)
+		// get _success
+		let wasSuccess := mload(callBytes)
+		// get abi length of _data output by EM
+		let returnedDataLengthFromABI := mload(add(callBytes, 0x40))
+		// call identity precompile with ALL raw returndata (ignores bool and abi) to make returndatasize() correct.
+		// also copies the relevant data back to the CALL's intended vals (retOffset, retLength)
+		returndatacopy(callBytes, 0, returndatasize())
+		kopy(add(callBytes, 0x60), returnedDataLengthFromABI, retOffset, retLength)
+		// remove all the stuff we did at callbytes
+		let newMemSize := msize()
+		// overwrite zeros starting from either the pre-modification msize, or the end of returndata (whichever is bigger)
+		let endOfReturnData := add(retOffset,min(returndatasize(), retLength))
+		for { let ptr := max(callBytes, endOfReturnData) } lt(ptr, newMemSize) { ptr := add(ptr, 0x20) } {
+			mstore(ptr, 0x00)
+		}
+		// set the first stack element out, this looks weird but it's really saying this is the intended stack output of the replaced EVM operation
+		retLength := wasSuccess
+	})"; 
+
+	if (_i.type() == PushData) {
+		auto dat = assemblyPtr()->data(_i.data());
+		if (std::find(dat.begin(), dat.end(), 0x5b) != dat.end()) {
+			m_errorReporter.warning(
+				7608_error,
+				assemblyPtr()->currentSourceLocation(),
+				"OVM: JUMPDEST found in constant");
+		}
+	}
+
+	bool ret = false;
+	if (_i.type() == Operation) {
+		ret = true;  // will be set to false again if we don't change the instruction
+		switch (_i.instruction()) {
+			case Instruction::SELFBALANCE:
+			case Instruction::BALANCE:
+				m_errorReporter.parserError(
+					1633_error,
+					assemblyPtr()->currentSourceLocation(),
+					"OVM: " +
+					instructionInfo(_i.instruction()).name +
+					" is not implemented in the OVM. (We have no native ETH -- use deposited WETH instead!)"
+				);
+				ret = false;
+				break;
+			case Instruction::BLOCKHASH:
+			case Instruction::CALLCODE:
+			case Instruction::COINBASE:
+			case Instruction::DIFFICULTY:
+			case Instruction::GASPRICE:
+			case Instruction::ORIGIN:
+			case Instruction::SELFDESTRUCT:
+				m_errorReporter.parserError(
+					6388_error,
+					assemblyPtr()->currentSourceLocation(),
+					"OVM: " +
+					instructionInfo(_i.instruction()).name +
+					" is not implemented in the OVM."
+				);
+				ret = false;
+				break;
+			case Instruction::SSTORE:
+				simpleRewrite("ovmSSTORE(bytes32,bytes32)", 2, 0);
+				break;
+			case Instruction::SLOAD:
+				simpleRewrite("ovmSLOAD(bytes32)", 1, 1);
+				break;
+			case Instruction::EXTCODESIZE:
+				simpleRewrite("ovmEXTCODESIZE(address)", 1, 1);
+				break;
+			case Instruction::EXTCODEHASH:
+				simpleRewrite("ovmEXTCODEHASH(address)", 1, 1);
+				break;
+			case Instruction::CALLER:
+				simpleRewrite("ovmCALLER()", 0, 1);
+				break;
+			case Instruction::ADDRESS:
+				// address doesn't like to be optimized for some reason
+				// a very small price to pay
+				simpleRewrite("ovmADDRESS()", 0, 1, false);
+				break;
+			case Instruction::TIMESTAMP:
+				simpleRewrite("ovmTIMESTAMP()", 0, 1);
+				break;
+			case Instruction::NUMBER:
+				simpleRewrite("ovmNUMBER()", 0, 1);
+				break;
+			case Instruction::CHAINID:
+				simpleRewrite("ovmCHAINID()", 0, 1);
+				break;
+			case Instruction::GASLIMIT:
+				simpleRewrite("ovmGASLIMIT()", 0, 1);
+				break;
+			case Instruction::CALL:
+				complexRewrite("ovmCALL(uint256,address,bytes)", 7, 1, callYUL,
+					{"retLength", "retOffset", "argsLength", "argsOffset", "value", "addr", "in_gas"});
+				break;
+			case Instruction::STATICCALL:
+				complexRewrite("ovmSTATICCALL(uint256,address,bytes)", 6, 1, callYUL,
+					{"retLength", "retOffset", "argsLength", "argsOffset", "addr", "in_gas"});
+				break;
+			case Instruction::DELEGATECALL:
+				complexRewrite("ovmDELEGATECALL(uint256,address,bytes)", 6, 1, callYUL,
+					{"retLength", "retOffset", "argsLength", "argsOffset", "addr", "in_gas"});
+				break;
+			case Instruction::REVERT:
+				complexRewrite("ovmREVERT(bytes)", 2, 0, R"(
+						// methodId is stored for us at callBytes
+						let dataStart := add(callBytes, 4)
+						// store abi offset
+						mstore(dataStart, 0x20)
+						// store abi length
+						mstore(add(dataStart, 0x20), length)
+						// store bytecode itself
+						for { let ptr := 0 } lt(ptr, length) { ptr := add(ptr, 0x20) } {
+							mstore(add(add(dataStart, 0x40), ptr), mload(add(offset, ptr)))
+						}
+						// technically 0x44 is the minimum needed to add to length, but ABI wants right-padding so we overpad by 0x20.
+						kall(callBytes, add(0x64, length), callBytes, 0x20)
+						// kall to ovmREVERT will itself trigger safe reversion so nothing further needed! 
+					})",
+					{"length", "offset"});
+				break;
+			case Instruction::CREATE:
+				complexRewrite("ovmCREATE(bytes)", 3, 1, R"(
+						// methodId is stored for us at callBytes
+						let dataStart := add(callBytes, 4)
+						// store abi offset
+						mstore(dataStart, 0x20)
+						// store abi length
+						mstore(add(dataStart, 0x20), length)
+						// store bytecode itself
+						for { let ptr := 0 } lt(ptr, length) { ptr := add(ptr, 0x20) } {
+							mstore(add(add(dataStart, 0x40), ptr), mload(add(offset, ptr)))
+						}
+						// technically 0x44 is the minimum needed to add to length, but ABI wants right-padding so we overpad by 0x20.
+						kall(callBytes, add(0x64, length), callBytes, 0x20)
+						// legnth is first stack val in ==> first stack val out (address)
+						length := mload(callBytes)
+						// remove all the stuff we did at callbytes.
+						let newMemSize := msize()
+						for { let ptr := callBytes } lt(ptr, newMemSize) { ptr := add(ptr, 0x20) } {
+							mstore(ptr, 0x00)
+						}
+					})",
+					{"length", "offset", "value"});
+				break;
+			case Instruction::CREATE2:
+				complexRewrite("ovmCREATE2(bytes,bytes32)", 4, 1, R"(
+						// methodId is stored for us at callBytes
+						let dataStart := add(callBytes, 4)
+						// store abi offset
+						mstore(dataStart, 0x40)
+						// store salt
+						mstore(add(dataStart, 0x20), salt)
+						// store abi length
+						mstore(add(dataStart, 0x40), length)
+						// store bytecode itself
+						for { let ptr := 0 } lt(ptr, length) { ptr := add(ptr, 0x20) } {
+							mstore(add(add(dataStart, 0x60), ptr), mload(add(offset, ptr)))
+						}
+						// technically 0x64 is the minimum needed to add to length, but ABI wants right-padding so we overpad by 0x20.
+						kall(callBytes, add(0x84, length), callBytes, 0x20)
+						// salt is first stack val in ==> first stack val out (address)
+						salt := mload(callBytes)
+						// remove all the stuff we did at callbytes.
+						let newMemSize := msize()
+						for { let ptr := callBytes } lt(ptr, newMemSize) { ptr := add(ptr, 0x20) } {
+							mstore(ptr, 0x00)
+						}
+					})",
+					{"salt", "length", "offset", "value"});
+				break;
+			case Instruction::EXTCODECOPY:
+				complexRewrite("ovmEXTCODECOPY(address,uint256,uint256)", 4, 0, R"(
+						mstore(add(callBytes, 4), addr)
+						mstore(add(callBytes, 0x24), offset)
+						mstore(add(callBytes, 0x44), length)
+						kall(callBytes, 0x64, destOffset, length)
+						
+						// remove all the stuff we did at callbytes, except for any part of the copied code itself which extended past callbytes.
+						let newMemSize := msize()
+						for { let ptr := max(callBytes, add(destOffset, length)) } lt(ptr, newMemSize) { ptr := add(ptr, 0x20) } {
+							mstore(ptr, 0x00)
+						}
+					})",
+					{"length", "offset", "destOffset", "addr"});
+				break;
+			case Instruction::RETURNDATACOPY:
+			case Instruction::RETURNDATASIZE:
+				if (m_is_building_user_asm) {
+					m_errorReporter.warning(
+						7742_error,
+						assemblyPtr()->currentSourceLocation(),
+						"OVM: Using RETURNDATASIZE or RETURNDATACOPY in user asm isn't guaranteed to work");
+				}
+				ret = false;
+				break;
+			default:
+				ret = false;
+				break;
+		}
+	}
+
+	m_disable_rewrite = false;
+	return ret;
+}
+
 void CompilerContext::addStateVariable(
 	VariableDeclaration const& _declaration,
 	u256 const& _storageOffset,

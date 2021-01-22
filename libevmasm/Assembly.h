@@ -149,6 +149,11 @@ public:
 	std::vector<size_t> decodeSubPath(size_t _subObjectId) const;
 	size_t encodeSubPath(std::vector<size_t> const& _subPath);
 
+	/// OVM change: opcode replacement callback
+	void setAppendCallback(std::function<bool(AssemblyItem const&)> f) { append_callback = f; }
+	std::function<bool(AssemblyItem const&)> append_callback = NULL;
+
+
 protected:
 	/// Does the same operations as @a optimise, but should only be applied to a sub and
 	/// returns the replaced tags. Also takes an argument containing the tags of this assembly
