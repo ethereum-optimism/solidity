@@ -153,7 +153,6 @@ public:
 	void setAppendCallback(std::function<bool(AssemblyItem const&)> f) { append_callback = f; }
 	std::function<bool(AssemblyItem const&)> append_callback = NULL;
 
-
 protected:
 	/// Does the same operations as @a optimise, but should only be applied to a sub and
 	/// returns the replaced tags. Also takes an argument containing the tags of this assembly

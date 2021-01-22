@@ -46,7 +46,6 @@ AssemblyItem const& Assembly::append(AssemblyItem const& _i)
 	// OVM change: if the callback returns true, we don't append the instruction
 	if (append_callback && append_callback(_i)) { return m_items.back(); }
 
-
 	assertThrow(m_deposit >= 0, AssemblyException, "Stack underflow.");
 	m_deposit += static_cast<int>(_i.deposit());
 	m_items.emplace_back(_i);
