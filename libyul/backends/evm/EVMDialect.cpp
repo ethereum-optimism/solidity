@@ -130,13 +130,14 @@ map<YulString, BuiltinFunctionForEVM> createBuiltins(langutil::EVMVersion _evmVe
 			builtins.emplace(createEVMFunction(name, opcode));
 	}
 
+    
 	// OVM changes: safe execution manager call
 	builtins.emplace(createFunction(
 		"kall",
 		4,
 		0,
 		SideEffects{false, false, false, false, true},
-		{LiteralKind{false}, LiteralKind{false}, LiteralKind{false}, LiteralKind{false}},
+		{},
 		[](
 			FunctionCall const& _call,
 			AbstractAssembly& _assembly,
