@@ -185,7 +185,7 @@ map<YulString, BuiltinFunctionForEVM> createBuiltins(langutil::EVMVersion _evmVe
 		4,
 		0,
 		SideEffects{false, false, false, false, true},
-		{LiteralKind{false}, LiteralKind{false}, LiteralKind{false}, LiteralKind{false}},
+		{},
 		[](
 			FunctionCall const& _call,
 			AbstractAssembly& _assembly,
