@@ -199,7 +199,7 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 		switch (_i.instruction()) {
 			case Instruction::SELFBALANCE:
 			case Instruction::BALANCE:
-				m_errorReporter.parserError(
+				m_errorReporter.warning(
 					1633_error,
 					assemblyPtr()->currentSourceLocation(),
 					"OVM: " +
@@ -215,7 +215,7 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 			case Instruction::GASPRICE:
 			case Instruction::ORIGIN:
 			case Instruction::SELFDESTRUCT:
-				m_errorReporter.parserError(
+				m_errorReporter.warning(
 					6388_error,
 					assemblyPtr()->currentSourceLocation(),
 					"OVM: " +
