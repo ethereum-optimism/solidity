@@ -1265,7 +1265,6 @@ void CompilerStack::compileContract(
 	try
 	{
 		// Assemble runtime object.
-
 		compiledContract.runtimeObject = compiledContract.evmRuntimeAssembly->assemble();
 
 		// BEGIN: OVM CHANGES
