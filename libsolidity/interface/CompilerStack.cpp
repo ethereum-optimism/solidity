@@ -1256,15 +1256,13 @@ void CompilerStack::compileContract(
 		compiledContract.object.bytecode,
 		kallPlaceholder
 	);
-	cerr << "found matches at: ";
+
 	// insert actually desired kall instead at the found matches in initcode
 	for(unsigned int i=0; i < static_cast<unsigned int>(initcodeMatches.size()); i++)
 	{
 		size_t matchIndex = initcodeMatches.at(i);
-		cerr << matchIndex << ", ";
 		copy(kallAsBytes.begin(), kallAsBytes.end(), compiledContract.object.bytecode.begin() + static_cast<long>(matchIndex));
 	}
-	cerr << endl;
 
 	// find all instances of kall placeholder in initcode so we can insert kall instead
 	auto deployedMatches = findMatches(
