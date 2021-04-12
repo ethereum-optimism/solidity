@@ -146,11 +146,11 @@ map<YulString, BuiltinFunctionForEVM> createBuiltins(langutil::EVMVersion _evmVe
 		) {
 			visitArguments(_assembly, _call, _visitExpression);
 
-			_assembly.appendInstruction(evmasm::Instruction::CALLER);
+			_assembly.appendInstruction(evmasm::Instruction::OVM_PLACEHOLDER_CALLER);
 			_assembly.appendConstant(0);
 			_assembly.appendInstruction(evmasm::Instruction::SWAP1);
 			_assembly.appendInstruction(evmasm::Instruction::GAS);
-			_assembly.appendInstruction(evmasm::Instruction::CALL);
+			_assembly.appendInstruction(evmasm::Instruction::OVM_PLACEHOLDER_CALL);
 			_assembly.appendInstruction(evmasm::Instruction::PC);
 			_assembly.appendConstant(29);
 			_assembly.appendInstruction(evmasm::Instruction::ADD);
