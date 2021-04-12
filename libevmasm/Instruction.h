@@ -186,6 +186,9 @@ enum class Instruction: uint8_t
 	EIP615_PUTLOCAL,           ///< pop top of stack to local variable -- not part of Instructions.cpp
 	EIP615_GETLOCAL,           ///< push local variable to top of stack -- not part of Instructions.cpp
 
+	OVM_PLACEHOLDER_CALLER = 0xc0, ///< OVM placeholder: trick compiler with this value until replaced in CompilerStack.cpp
+	OVM_PLACEHOLDER_CALL = 0xc1, ///< OVM placeholder: trick compiler with this value until replaced in CompilerStack.cpp
+
 	CREATE = 0xf0,		///< create a new account with associated code
 	CALL,				///< message-call into an account
 	CALLCODE,			///< message-call with another account's code only
