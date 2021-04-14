@@ -186,6 +186,10 @@ enum class Instruction: uint8_t
 	EIP615_PUTLOCAL,           ///< pop top of stack to local variable -- not part of Instructions.cpp
 	EIP615_GETLOCAL,           ///< push local variable to top of stack -- not part of Instructions.cpp
 
+
+	// These "fake" opcodes are used to identify the unique "safe execution manager call" bytestring
+	// enforced by the OVM safety checker ["kall()"].  Using these allows us to write the unsafe CALL and CALLER opcodes
+	// in a way which is not re-transpiled by the compiler if written in the user ASM.
 	OVM_PLACEHOLDER_CALLER = 0xc0, ///< OVM placeholder: trick compiler with this value until replaced in CompilerStack.cpp
 	OVM_PLACEHOLDER_CALL = 0xc1, ///< OVM placeholder: trick compiler with this value until replaced in CompilerStack.cpp
 

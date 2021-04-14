@@ -131,7 +131,12 @@ map<YulString, BuiltinFunctionForEVM> createBuiltins(langutil::EVMVersion _evmVe
 	}
 
     
-	// OVM changes: safe execution manager call
+	// OVM changes: "kall", the safe execution manager call.  This function is created
+	// as a builtin which can be accessed via inline assembly, or internally to the compiler
+	// as done in CompilerContext.cpp
+	// NOTE: the opcodes below DO NOT MATCH the SafetyChecker.sol.  This is intentional; we
+	// use some different opcodes (of the same total length) here so that the solidity optimizer
+	// plays nice with it, and we replace with the right string in CompilerStack.cpp.
 	builtins.emplace(createFunction(
 		"kall",
 		4,
