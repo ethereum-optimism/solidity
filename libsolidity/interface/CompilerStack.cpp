@@ -1218,6 +1218,49 @@ bool onlySafeExperimentalFeaturesActivated(set<ExperimentalFeature> const& featu
 }
 }
 
+// OVM change: helper byte substring matching function
+std::vector<std::size_t> findMatches(const bytes haystack,
+                                          const bytes needle)
+{
+    std::vector<std::size_t> indexes{};
+    auto it{haystack.begin()};
+    while ((it = std::search(it, haystack.end(), needle.begin(), needle.end())) != haystack.end())
+	{
+		auto dist = std::distance(haystack.begin(), it++);
+        indexes.push_back(static_cast<unsigned long>(dist));
+	}
+    return indexes;
+}
+
+// Replaces kall which does not get screwed by optimizer with kall we actually want.
+void rewriteOptimizerDodgingCode(evmasm::LinkerObject& codeObject)
+{
+	// the bytes that `kall` is assigned via EVMDialect.cpp
+	bytes kallPlaceholder{
+		0x33, 0x60, 0x00, 0x90, 0x5a, 0xf1, 0x58, 0x60, 0x1d, 0x01, 0x57, 0x3d, 0x60, 0x01, 0x14, 0x58, 0x60, 0x0c, 0x01, 0x57, 0x3d, 0x60, 0x00, 0x80, 0x3e, 0x3d, 0x62, 0x12, 0x34, 0x56, 0x52, 0x60, 0xea, 0x61, 0x10, 0x9c, 0x52
+	};
+
+	// The bytes that we really want kall to have
+	bytes kallAsBytes{
+		0x33, 0x60, 0x00, 0x90, 0x5a, 0xf1, 0x58, 0x60, 0x0e, 0x01, 0x57, 0x3d, 0x60, 0x00, 0x80, 0x3e, 0x3d, 0x60, 0x00, 0xfd, 0x5b, 0x3d, 0x60, 0x01, 0x14, 0x15, 0x58, 0x60, 0x0a, 0x01, 0x57, 0x60, 0x01, 0x60, 0x00, 0xf3, 0x5b
+		};
+
+	// find all instances of kall placeholder so we can insert kall instead
+	auto initcodeMatches = findMatches(
+		codeObject.bytecode,
+		kallPlaceholder
+	);
+
+	// insert actually desired kall instead at the found matches
+	for(unsigned int i=0; i < static_cast<unsigned int>(initcodeMatches.size()); i++)
+	{
+		size_t matchIndex = initcodeMatches.at(i);
+		copy(kallAsBytes.begin(), kallAsBytes.end(), codeObject.bytecode.begin() + static_cast<long>(matchIndex));
+	}
+}
+
+// END OVM CHANGE
+
 void CompilerStack::compileContract(
 	ContractDefinition const& _contract,
 	map<ContractDefinition const*, shared_ptr<Compiler const>>& _otherCompilers
@@ -1238,7 +1281,7 @@ void CompilerStack::compileContract(
 
 	Contract& compiledContract = m_contracts.at(_contract.fullyQualifiedName());
 
-	shared_ptr<Compiler> compiler = make_shared<Compiler>(m_evmVersion, m_revertStrings, m_optimiserSettings);
+	shared_ptr<Compiler> compiler = make_shared<Compiler>(m_evmVersion, m_revertStrings, m_optimiserSettings, m_errorReporter);
 	compiledContract.compiler = compiler;
 
 	bytes cborEncodedMetadata = createCBORMetadata(compiledContract);
@@ -1259,6 +1302,10 @@ void CompilerStack::compileContract(
 	{
 		// Assemble deployment (incl. runtime)  object.
 		compiledContract.object = compiledContract.evmAssembly->assemble();
+
+		// BEGIN: OVM CHANGES
+		rewriteOptimizerDodgingCode(compiledContract.object);
+		// END: OVM CHANGES
 	}
 	catch(evmasm::AssemblyException const&)
 	{
@@ -1272,11 +1319,54 @@ void CompilerStack::compileContract(
 	{
 		// Assemble runtime object.
 		compiledContract.runtimeObject = compiledContract.evmRuntimeAssembly->assemble();
+
+		// BEGIN: OVM CHANGES
+		rewriteOptimizerDodgingCode(compiledContract.runtimeObject);
+		// END: OVM CHANGES
 	}
 	catch(evmasm::AssemblyException const&)
 	{
 		solAssert(false, "Assembly exception for deployed bytecode");
 	}
+
+	// BEGIN: OVM CHANGES.  Replaces kall which does not get screwed by optimizer with kall we actually want.
+
+	// the bytes that `kall` is assigned via EVMDialect.cpp
+	bytes kallPlaceholder{
+		0xc0, 0x60, 0x00, 0x90, 0x5a, 0xc1, 0x58, 0x60, 0x1d, 0x01, 0x57, 0x3d, 0x60, 0x01, 0x14, 0x58, 0x60, 0x0c, 0x01, 0x57, 0x3d, 0x60, 0x00, 0x80, 0x3e, 0x3d, 0x62, 0x12, 0x34, 0x56, 0x52, 0x60, 0xea, 0x61, 0x10, 0x9c, 0x52
+	};
+
+	// The bytes that we really want kall to have
+	bytes kallAsBytes{
+		0x33, 0x60, 0x00, 0x90, 0x5a, 0xf1, 0x58, 0x60, 0x0e, 0x01, 0x57, 0x3d, 0x60, 0x00, 0x80, 0x3e, 0x3d, 0x60, 0x00, 0xfd, 0x5b, 0x3d, 0x60, 0x01, 0x14, 0x15, 0x58, 0x60, 0x0a, 0x01, 0x57, 0x60, 0x01, 0x60, 0x00, 0xf3, 0x5b
+		};
+
+	// find all instances of kall placeholder in initcode so we can insert kall instead
+	auto initcodeMatches = findMatches(
+		compiledContract.object.bytecode,
+		kallPlaceholder
+	);
+
+	// insert actually desired kall instead at the found matches in initcode
+	for(unsigned int i=0; i < static_cast<unsigned int>(initcodeMatches.size()); i++)
+	{
+		size_t matchIndex = initcodeMatches.at(i);
+		copy(kallAsBytes.begin(), kallAsBytes.end(), compiledContract.object.bytecode.begin() + static_cast<long>(matchIndex));
+	}
+
+	// find all instances of kall placeholder in initcode so we can insert kall instead
+	auto deployedMatches = findMatches(
+		compiledContract.runtimeObject.bytecode,
+		kallPlaceholder
+	);
+
+	// insert actually desired kall instead at the found matches in deployed bytecode
+	for(unsigned int i=0; i < static_cast<unsigned int>(deployedMatches.size()); i++)
+	{
+		size_t matchIndex = deployedMatches.at(i);
+		copy(kallAsBytes.begin(), kallAsBytes.end(), compiledContract.runtimeObject.bytecode.begin() + static_cast<long>(matchIndex));
+	}
+	// END: OVM CHANGES
 
 	// Throw a warning if EIP-170 limits are exceeded:
 	//   If contract creation returns data with length greater than 0x6000 (214 + 213) bytes,

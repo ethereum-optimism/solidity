@@ -211,6 +211,9 @@ static std::map<Instruction, InstructionInfo> const c_instructionInfo =
 	{ Instruction::BALANCE,		{ "BALANCE",		0, 1, 1, false, Tier::Balance } },
 	{ Instruction::ORIGIN,		{ "ORIGIN",			0, 0, 1, false, Tier::Base } },
 	{ Instruction::CALLER,		{ "CALLER",			0, 0, 1, false, Tier::Base } },
+	// BEGIN: OVM CHANGE
+	{ Instruction::OVM_PLACEHOLDER_CALLER,		{ "OVM_PLACEHOLDER_CALLER",			0, 0, 1, false, Tier::Base } },
+	// END: OVM CHANGE
 	{ Instruction::CALLVALUE,	{ "CALLVALUE",		0, 0, 1, false, Tier::Base } },
 	{ Instruction::CALLDATALOAD,{ "CALLDATALOAD",	0, 1, 1, false, Tier::VeryLow } },
 	{ Instruction::CALLDATASIZE,{ "CALLDATASIZE",	0, 0, 1, false, Tier::Base } },
@@ -314,6 +317,9 @@ static std::map<Instruction, InstructionInfo> const c_instructionInfo =
 	{ Instruction::LOG4,		{ "LOG4",			0, 6, 0, true, Tier::Special } },
 	{ Instruction::CREATE,		{ "CREATE",			0, 3, 1, true, Tier::Special } },
 	{ Instruction::CALL,		{ "CALL",			0, 7, 1, true, Tier::Special } },
+	// BEGIN: OVM CHANGE
+	{ Instruction::OVM_PLACEHOLDER_CALL,		{ "OVM_PLACEHOLDER_CALL",			0, 7, 1, true, Tier::Special } },
+	// END: OVM CHANGE
 	{ Instruction::CALLCODE,	{ "CALLCODE",		0, 7, 1, true, Tier::Special } },
 	{ Instruction::RETURN,		{ "RETURN",			0, 2, 0, true, Tier::Zero } },
 	{ Instruction::DELEGATECALL,	{ "DELEGATECALL",	0, 6, 1, true, Tier::Special } },

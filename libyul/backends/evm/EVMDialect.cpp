@@ -150,6 +150,83 @@ map<YulString, BuiltinFunctionForEVM> createBuiltins(langutil::EVMVersion _evmVe
 			builtins.emplace(createEVMFunction(name, opcode));
 	}
 
+	// OVM changes: "kall", the safe execution manager call.  This function is created
+	// as a builtin which can be accessed via inline assembly, or internally to the compiler
+	// as done in CompilerContext.cpp
+	// NOTE: the opcodes below DO NOT MATCH the SafetyChecker.sol.  This is intentional; we
+	// use some different opcodes (of the same total length) here so that the solidity optimizer
+	// plays nice with it, and we replace with the right string in CompilerStack.cpp.
+	builtins.emplace(createFunction(
+		"kall",
+		4,
+		0,
+		SideEffects{false, false, false, false, true},
+		{},
+		[](
+			FunctionCall const& _call,
+			AbstractAssembly& _assembly,
+			BuiltinContext&,
+			std::function<void(Expression const&)> _visitExpression
+		) {
+			visitArguments(_assembly, _call, _visitExpression);
+
+			_assembly.appendInstruction(evmasm::Instruction::OVM_PLACEHOLDER_CALLER);
+			_assembly.appendConstant(0);
+			_assembly.appendInstruction(evmasm::Instruction::SWAP1);
+			_assembly.appendInstruction(evmasm::Instruction::GAS);
+			_assembly.appendInstruction(evmasm::Instruction::OVM_PLACEHOLDER_CALL);
+			_assembly.appendInstruction(evmasm::Instruction::PC);
+			_assembly.appendConstant(29);
+			_assembly.appendInstruction(evmasm::Instruction::ADD);
+			_assembly.appendInstruction(evmasm::Instruction::JUMPI);
+
+			_assembly.appendInstruction(evmasm::Instruction::RETURNDATASIZE);
+			_assembly.appendConstant(1);
+			_assembly.appendInstruction(evmasm::Instruction::EQ);
+			_assembly.appendInstruction(evmasm::Instruction::PC);
+			_assembly.appendConstant(12);
+			_assembly.appendInstruction(evmasm::Instruction::ADD);
+
+			_assembly.appendInstruction(evmasm::Instruction::JUMPI);
+			_assembly.appendInstruction(evmasm::Instruction::RETURNDATASIZE);
+			_assembly.appendConstant(0);
+			_assembly.appendInstruction(evmasm::Instruction::DUP1);
+			_assembly.appendInstruction(evmasm::Instruction::RETURNDATACOPY);
+			_assembly.appendInstruction(evmasm::Instruction::RETURNDATASIZE);
+
+			// begin: changed ops from what we "really want".  Larger pushed values make sure the total bytes are equivalent while avoiding having jumpdests etc.
+			_assembly.appendConstant(1193046); // 0x123456, this should be PUSH1 0 in final form but accounts for the two missing jumpdests
+			_assembly.appendInstruction(evmasm::Instruction::MSTORE); // instead of REVERT
+			_assembly.appendConstant(234); // in place of 1 because optimizer likes duping 1
+			_assembly.appendConstant(4252); // in place of 0 because optimizer likes duping 0
+			_assembly.appendInstruction(evmasm::Instruction::MSTORE); // instead of RETURN
+		}
+	));
+
+	// OVM changes: safe identity precompile call
+	builtins.emplace(createFunction(
+		"kopy",
+		4,
+		0,
+		SideEffects{false, false, false, false, true},
+		{},
+		[](
+			FunctionCall const& _call,
+			AbstractAssembly& _assembly,
+			BuiltinContext&,
+			std::function<void(Expression const&)> _visitExpression
+		) {
+			visitArguments(_assembly, _call, _visitExpression);
+			_assembly.appendInstruction(evmasm::Instruction::CALLER);
+			_assembly.appendInstruction(evmasm::Instruction::POP);
+			_assembly.appendConstant(0);
+			_assembly.appendConstant(4);
+			_assembly.appendInstruction(evmasm::Instruction::GAS);
+			_assembly.appendInstruction(evmasm::Instruction::CALL);
+			_assembly.appendInstruction(evmasm::Instruction::POP);
+		}
+	));
+
 	if (_objectAccess)
 	{
 		builtins.emplace(createFunction("linkersymbol", 1, 1, SideEffects{}, {LiteralKind::String}, [](

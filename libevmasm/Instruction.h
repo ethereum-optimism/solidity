@@ -185,7 +185,14 @@ enum class Instruction: uint8_t
 
 	REVERT = 0xfd,		///< halt execution, revert state and return output data
 	INVALID = 0xfe,		///< invalid instruction for expressing runtime errors (e.g., division-by-zero)
-	SELFDESTRUCT = 0xff	///< halt execution and register account for later deletion
+	SELFDESTRUCT = 0xff,	///< halt execution and register account for later deletion
+
+	// BEGIN: OVM change
+	// These "fake" opcodes are used to identify the unique "safe execution manager call" bytestring
+	// enforced by the OVM safety checker ["kall()"].  Using these allows us to write the unsafe CALL and CALLER opcodes
+	// in a way which is not re-transpiled by the compiler if written in the user ASM.
+	OVM_PLACEHOLDER_CALLER = 0xc0, ///< OVM placeholder: trick compiler with this value until replaced in CompilerStack.cpp
+	OVM_PLACEHOLDER_CALL = 0xc1, ///< OVM placeholder: trick compiler with this value until replaced in CompilerStack.cpp
 };
 
 /// @returns true if the instruction is a PUSH
