@@ -908,6 +908,7 @@ bool ContractCompiler::visit(InlineAssembly const& _inlineAssembly)
 		analysisInfo = object.analysisInfo.get();
 	}
 
+	m_context.m_is_building_user_asm = true;
 	yul::CodeGenerator::assemble(
 		*code,
 		*analysisInfo,
@@ -917,6 +918,7 @@ bool ContractCompiler::visit(InlineAssembly const& _inlineAssembly)
 		false,
 		m_optimiserSettings.optimizeStackAllocation
 	);
+	m_context.m_is_building_user_asm = false;
 	m_context.setStackOffset(static_cast<int>(startStackHeight));
 	return false;
 }
