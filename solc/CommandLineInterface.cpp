@@ -231,7 +231,7 @@ static set<string> const g_yulDialectArgs
 static void version()
 {
 	sout() <<
-		"solc, the solidity compiler commandline interface" <<
+		"osolc, the optimistc solidity compiler commandline interface" <<
 		endl <<
 		"Version: " <<
 		dev::solidity::VersionString <<
