@@ -132,7 +132,52 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 	if (m_disable_rewrite) return false;
 	m_disable_rewrite = true;
 
-	auto callYUL = R"(
+	auto staticCallYUL = R"(
+		// declare helper functions
+		function max(first, second) -> bigger {
+			bigger := first
+			if gt(second, first) { bigger := second }
+		}
+		function min(first, second) -> smaller {
+			smaller := first
+			if lt(second, first) { smaller := second }
+		}
+		// store _gasLimit
+		mstore(add(callBytes, 0x04), in_gas)
+		// store _address
+		mstore(add(callBytes, 0x24), addr)
+		// store abi bytes memory offset
+		mstore(add(callBytes, 0x44), 0x60)
+		// store bytes memory _calldata.length
+		mstore(add(callBytes, 0x64), argsLength)
+		// store bytes memory _calldata raw data
+		let rawCallBytes := add(callBytes, 0x84)
+		for { let ptr := 0 } lt(ptr, argsLength) { ptr := add(ptr, 0x20) } {
+			mstore(add(rawCallBytes, ptr), mload(add(argsOffset, ptr)))
+		}
+		// kall, only grabbing 3 words of returndata (success & abi encoding params) and just throw on top of where we put it (successfull kall will awlays return >= 0x60 bytes)
+		// overpad calldata by a word (argsLen [raw data] + 0x84 [abi prefixing] + 0x20 [1 word max to pad] = argsLen + 0xa4) to ensure sufficient right 0-padding for abi encoding
+		kall(callBytes, add(0xa4, argsLength), callBytes, 0x60)
+		// get _success
+		let wasSuccess := mload(callBytes)
+		// get abi length of _data output by EM
+		let returnedDataLengthFromABI := mload(add(callBytes, 0x40))
+		// call identity precompile with ALL raw returndata (ignores bool and abi) to make returndatasize() correct.
+		// also copies the relevant data back to the CALL's intended vals (retOffset, retLength)
+		returndatacopy(callBytes, 0, returndatasize())
+		kopy(add(callBytes, 0x60), returnedDataLengthFromABI, retOffset, retLength)
+		// remove all the stuff we did at callbytes
+		let newMemSize := msize()
+		// overwrite zeros starting from either the pre-modification msize, or the end of returndata (whichever is bigger)
+		let endOfReturnData := add(retOffset,min(returndatasize(), retLength))
+		for { let ptr := max(callBytes, endOfReturnData) } lt(ptr, newMemSize) { ptr := add(ptr, 0x20) } {
+			mstore(ptr, 0x00)
+		}
+		// set the first stack element out, this looks weird but it's really saying this is the intended stack output of the replaced EVM operation
+		retLength := wasSuccess
+	})"; 
+
+	auto valueCallYUL = R"(
 		// declare helper functions
 		function max(first, second) -> bigger {
 			bigger := first
@@ -251,15 +296,15 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 				simpleRewrite("ovmGASLIMIT()", 0, 1);
 				break;
 			case Instruction::CALL:
-				complexRewrite("ovmCALL(uint256,address,bytes)", 7, 1, callYUL,
+				complexRewrite("ovmCALL(uint256,address,uint256,bytes)", 7, 1, valueCallYUL,
 					{"retLength", "retOffset", "argsLength", "argsOffset", "value", "addr", "in_gas"});
 				break;
 			case Instruction::STATICCALL:
-				complexRewrite("ovmSTATICCALL(uint256,address,bytes)", 6, 1, callYUL,
+				complexRewrite("ovmSTATICCALL(uint256,address,bytes)", 6, 1, staticCallYUL,
 					{"retLength", "retOffset", "argsLength", "argsOffset", "addr", "in_gas"});
 				break;
 			case Instruction::DELEGATECALL:
-				complexRewrite("ovmDELEGATECALL(uint256,address,bytes)", 6, 1, callYUL,
+				complexRewrite("ovmDELEGATECALL(uint256,address,uint256,bytes)", 6, 1, valueCallYUL,
 					{"retLength", "retOffset", "argsLength", "argsOffset", "addr", "in_gas"});
 				break;
 			case Instruction::REVERT:
