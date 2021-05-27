@@ -132,7 +132,7 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 	if (m_disable_rewrite) return false;
 	m_disable_rewrite = true;
 
-	auto staticCallYUL = R"(
+	auto callYUL = R"(
 		// declare helper functions
 		function max(first, second) -> bigger {
 			bigger := first
@@ -146,18 +146,20 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 		mstore(add(callBytes, 0x04), in_gas)
 		// store _address
 		mstore(add(callBytes, 0x24), addr)
+		// store call value
+		mstore(add(callBytes,0x44), value)
 		// store abi bytes memory offset
-		mstore(add(callBytes, 0x44), 0x60)
+		mstore(add(callBytes, 0x64), 0x80)
 		// store bytes memory _calldata.length
-		mstore(add(callBytes, 0x64), argsLength)
+		mstore(add(callBytes, 0x84), argsLength)
 		// store bytes memory _calldata raw data
-		let rawCallBytes := add(callBytes, 0x84)
+		let rawCallBytes := add(callBytes, 0xa4)
 		for { let ptr := 0 } lt(ptr, argsLength) { ptr := add(ptr, 0x20) } {
 			mstore(add(rawCallBytes, ptr), mload(add(argsOffset, ptr)))
 		}
-		// kall, only grabbing 3 words of returndata (success & abi encoding params) and just throw on top of where we put it (successfull kall will awlays return >= 0x60 bytes)
-		// overpad calldata by a word (argsLen [raw data] + 0x84 [abi prefixing] + 0x20 [1 word max to pad] = argsLen + 0xa4) to ensure sufficient right 0-padding for abi encoding
-		kall(callBytes, add(0xa4, argsLength), callBytes, 0x60)
+		// kall, only grabbing 3 words of returndata (success & abi encoding params) and just throw on top of where we put calldata (successfull kall will awlays return >= 0x60 bytes)
+		// overpad calldata by a word (argsLen [raw data] + 0xa4 [abi prefixing] + 0x20 [1 word max to pad] = argsLen + 0xc4) to ensure sufficient right 0-padding for abi encoding
+		kall(callBytes, add(0xc4, argsLength), callBytes, 0x60)
 		// get _success
 		let wasSuccess := mload(callBytes)
 		// get abi length of _data output by EM
@@ -175,9 +177,9 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 		}
 		// set the first stack element out, this looks weird but it's really saying this is the intended stack output of the replaced EVM operation
 		retLength := wasSuccess
-	})"; 
+	})";
 
-	auto valueCallYUL = R"(
+	auto noValueCallYUL = R"(
 		// declare helper functions
 		function max(first, second) -> bigger {
 			bigger := first
@@ -236,17 +238,6 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 	if (_i.type() == Operation) {
 		ret = true;  // will be set to false again if we don't change the instruction
 		switch (_i.instruction()) {
-			case Instruction::SELFBALANCE:
-			case Instruction::BALANCE:
-				m_errorReporter.parserError(
-					1633_error,
-					assemblyPtr()->currentSourceLocation(),
-					"OVM: " +
-					instructionInfo(_i.instruction()).name +
-					" is not implemented in the OVM. (We have no native ETH -- use deposited WETH instead!)"
-				);
-				ret = false;
-				break;
 			case Instruction::BLOCKHASH:
 			case Instruction::CALLCODE:
 			case Instruction::COINBASE:
@@ -275,8 +266,17 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 			case Instruction::EXTCODEHASH:
 				simpleRewrite("ovmEXTCODEHASH(address)", 1, 1);
 				break;
+			case Instruction::BALANCE:
+				simpleRewrite("ovmBALANCE(address)", 1, 1);
+				break;
 			case Instruction::CALLER:
 				simpleRewrite("ovmCALLER()", 0, 1);
+				break;
+			case Instruction::CALLVALUE:
+				simpleRewrite("ovmCALLVALUE()", 0, 1);
+				break;
+			case Instruction::SELFBALANCE:
+				simpleRewrite("ovmSELFBALANCE()", 0, 1);
 				break;
 			case Instruction::ADDRESS:
 				// address doesn't like to be optimized for some reason
@@ -296,15 +296,15 @@ bool CompilerContext::appendCallback(evmasm::AssemblyItem const& _i) {
 				simpleRewrite("ovmGASLIMIT()", 0, 1);
 				break;
 			case Instruction::CALL:
-				complexRewrite("ovmCALL(uint256,address,uint256,bytes)", 7, 1, valueCallYUL,
+				complexRewrite("ovmCALL(uint256,address,uint256,bytes)", 7, 1, callYUL,
 					{"retLength", "retOffset", "argsLength", "argsOffset", "value", "addr", "in_gas"});
 				break;
 			case Instruction::STATICCALL:
-				complexRewrite("ovmSTATICCALL(uint256,address,bytes)", 6, 1, staticCallYUL,
+				complexRewrite("ovmSTATICCALL(uint256,address,bytes)", 6, 1, noValueCallYUL,
 					{"retLength", "retOffset", "argsLength", "argsOffset", "addr", "in_gas"});
 				break;
 			case Instruction::DELEGATECALL:
-				complexRewrite("ovmDELEGATECALL(uint256,address,uint256,bytes)", 6, 1, valueCallYUL,
+				complexRewrite("ovmDELEGATECALL(uint256,address,bytes)", 6, 1, noValueCallYUL,
 					{"retLength", "retOffset", "argsLength", "argsOffset", "addr", "in_gas"});
 				break;
 			case Instruction::REVERT:
